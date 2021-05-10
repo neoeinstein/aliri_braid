@@ -1,0 +1,450 @@
+mod parameters;
+
+pub use parameters::Parameters;
+use quote::{format_ident, quote, ToTokens};
+use std::convert::TryInto;
+
+pub fn typed_string_tokens(
+    args: syn::AttributeArgs,
+    body: syn::ItemStruct,
+) -> Result<proc_macro2::TokenStream, syn::Error> {
+    typed_string_params(args.try_into()?, body)
+}
+
+pub fn typed_string_params(
+    params: Parameters,
+    mut body: syn::ItemStruct,
+) -> Result<proc_macro2::TokenStream, syn::Error> {
+    let Parameters {
+        ref_type,
+        derive_serde,
+        no_auto_ref,
+        ref_doc,
+        validate,
+        validator,
+    } = params;
+    let ref_type = ref_type.unwrap_or_else(|| infer_ref_type_from_owned_name(&body.ident));
+
+    let wrapped_type = get_or_set_wrapped_type(&mut body.fields)?;
+    let name = &body.ident;
+    let validator = validate.then(|| infer_validator(name, &validator));
+
+    let inherent_impls = inherent_impls(name, &ref_type, &wrapped_type, &validator);
+    let common_impls = common_impls(name, &ref_type, &wrapped_type);
+    let conversion_impls = conversion_impls(name, &ref_type, &wrapped_type, &validator);
+
+    let serde_impls = derive_serde.then(|| serde_impls(name, validator.is_some(), &wrapped_type));
+
+    let construct_ref_item = (!no_auto_ref)
+        .then(|| construct_ref_item(name, &body.vis, &ref_type, validator, derive_serde, ref_doc))
+        .transpose()?;
+
+    let output = quote! {
+        #[derive(Clone, Debug, Hash, PartialEq, Eq)]
+        #[repr(transparent)]
+        #body
+
+        #inherent_impls
+        #common_impls
+        #conversion_impls
+        #serde_impls
+
+        #construct_ref_item
+    };
+
+    Ok(output)
+}
+
+fn infer_ref_type_from_owned_name(name: &syn::Ident) -> syn::Type {
+    let name_str = name.to_string();
+    if name_str.ends_with("Buf") {
+        syn::Type::Path(syn::TypePath {
+            qself: None,
+            path: syn::Path::from(format_ident!("{}", name_str[..name_str.len() - 3])),
+        })
+    } else {
+        syn::Type::Path(syn::TypePath {
+            qself: None,
+            path: syn::Path::from(format_ident!("{}Ref", name_str)),
+        })
+    }
+}
+
+fn get_or_set_wrapped_type(fields: &mut syn::Fields) -> Result<syn::Type, syn::Error> {
+    if fields.is_empty() {
+        let def_type: syn::Type = syn::parse2(quote! { String }).unwrap();
+        let flds = syn::parse2(quote! { (#def_type) }).unwrap();
+        *fields = syn::Fields::Unnamed(flds);
+        Ok(def_type)
+    } else if let syn::Fields::Unnamed(flds) = &mut *fields {
+        let mut iter = flds.unnamed.iter();
+        let f = iter.next().unwrap();
+        if iter.next().is_some() {
+            Err(syn::Error::new_spanned(
+                &flds,
+                "typed string can only have one unnamed field",
+            ))
+        } else {
+            Ok(f.ty.clone())
+        }
+    } else {
+        Err(syn::Error::new_spanned(
+            &fields,
+            "typed string can only have one unnamed field",
+        ))
+    }
+}
+
+fn infallible_owned_creation(ident: &syn::Ident) -> proc_macro2::TokenStream {
+    let doc_comment = format!("Constructs a new {}", ident);
+
+    let creation_functions = quote! {
+        #[doc = #doc_comment]
+        pub fn new<S: Into<String>>(s: S) -> Self {
+            Self(s.into())
+        }
+    };
+
+    creation_functions
+}
+
+fn fallible_owned_creation(ident: &syn::Ident, validator: &syn::Type) -> proc_macro2::TokenStream {
+    let validator_tokens = validator.to_token_stream();
+    let doc_comment = format!(
+        "Constructs a new {} if it conforms to [`{}`]",
+        ident, validator_tokens
+    );
+
+    let doc_comment_unsafe = format!(
+        "Constructs a new {} without validation\n\
+        \n\
+        ## Safety\n\
+        \n\
+        Consumers of this function must ensure that values conform to [`{}`].",
+        ident, validator_tokens
+    );
+
+    quote! {
+        #[doc = #doc_comment]
+        pub fn new<S: Into<String> + AsRef<str>>(s: S) -> Result<Self, <#validator as ::braid::Validator>::Error> {
+            <#validator as ::braid::Validator>::validate(s.as_ref())?;
+            Ok(Self(s.into()))
+        }
+
+        #[doc = #doc_comment_unsafe]
+        pub unsafe fn new_unchecked<S: Into<String>>(s: S) -> Self {
+            Self(s.into())
+        }
+    }
+}
+
+fn inherent_impls(
+    name: &syn::Ident,
+    ref_type: &syn::Type,
+    wrapped_type: &syn::Type,
+    validator: &Option<syn::Type>,
+) -> proc_macro2::TokenStream {
+    let creation_functions = if let Some(validator) = validator {
+        fallible_owned_creation(name, validator)
+    } else {
+        infallible_owned_creation(name)
+    };
+
+    let doc_box = format!(
+        "\
+        Converts this `{}` into a [`Box`]`<`[`{}`]`>`\n\
+        \n\
+        This will drop any excess capacity.",
+        name,
+        ref_type.to_token_stream(),
+    );
+    let doc = format!(
+        "Unwraps the underlying [`{}`] value",
+        wrapped_type.to_token_stream()
+    );
+
+    quote! {
+        impl #name {
+            #creation_functions
+
+            #[doc = #doc_box]
+            #[inline]
+            #[allow(unsafe_code)]
+            pub fn into_boxed_ref(self) -> Box<#ref_type> {
+                // SAFETY: A Box<str> has the same representation as a Box<#ref_type>.
+                // Lifetimes are not implicated as the value on the heap is owned, so
+                // this transmute is safe.
+                let box_str = self.0.into_boxed_str();
+                unsafe { ::std::mem::transmute(box_str) }
+            }
+
+            #[doc = #doc]
+            #[inline]
+            pub fn into_string(self) -> #wrapped_type {
+                self.0
+            }
+        }
+    }
+}
+
+fn construct_ref_item(
+    name: &syn::Ident,
+    vis: &syn::Visibility,
+    ref_type: &syn::Type,
+    validator: Option<syn::Type>,
+    derive_serde: bool,
+    ref_doc: Option<String>,
+) -> Result<proc_macro2::TokenStream, syn::Error> {
+    let ref_vis = vis.clone();
+
+    let ref_doc = ref_doc.unwrap_or_else(|| format!("A reference to a borrowed [`{}`]", name));
+
+    crate::borrow::typed_string_ref_params(
+        crate::borrow::Parameters {
+            owned_type: Some(syn::parse_quote!(#name)),
+            validator,
+            derive_serde,
+        },
+        syn::parse_quote! {
+                #[doc = #ref_doc]
+                #ref_vis struct #ref_type(str);
+        },
+    )
+}
+
+pub fn infer_validator(name: &syn::Ident, validator: &Option<syn::Type>) -> syn::Type {
+    let tokens = if let Some(validator) = validator {
+        validator.to_token_stream()
+    } else {
+        name.to_token_stream()
+    };
+
+    syn::parse_quote!(#tokens)
+}
+
+pub fn common_impls(
+    name: &syn::Ident,
+    ref_type: &syn::Type,
+    wrapped_type: &syn::Type,
+) -> proc_macro2::TokenStream {
+    quote! {
+        impl From<#name> for #wrapped_type {
+            #[inline]
+            fn from(outer: #name) -> Self {
+                outer.0
+            }
+        }
+
+        impl From<&'_ #ref_type> for #name {
+            #[inline]
+            fn from(s: &#ref_type) -> Self {
+                s.to_owned()
+            }
+        }
+
+        impl ::std::borrow::Borrow<#ref_type> for #name {
+            #[inline]
+            fn borrow(&self) -> &#ref_type {
+                ::std::ops::Deref::deref(self)
+            }
+        }
+
+        impl AsRef<str> for #name {
+            #[inline]
+            fn as_ref(&self) -> &str {
+                self.as_str()
+            }
+        }
+
+        impl AsRef<#ref_type> for #name {
+            #[inline]
+            fn as_ref(&self) -> &#ref_type {
+                ::std::ops::Deref::deref(self)
+            }
+        }
+
+        impl<'a> ::std::fmt::Display for #name {
+            #[inline]
+            fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+                f.write_str(self.as_str())
+            }
+        }
+    }
+}
+
+fn infallible_conversion_impls(
+    name: &syn::Ident,
+    ref_type: &syn::Type,
+    wrapped_type: &syn::Type,
+) -> proc_macro2::TokenStream {
+    quote! {
+        impl From<#wrapped_type> for #name {
+            #[inline]
+            fn from(s: #wrapped_type) -> Self {
+                Self::new(s)
+            }
+        }
+
+        impl From<&'_ str> for #name {
+            #[inline]
+            fn from(s: &str) -> Self {
+                Self::new(#wrapped_type::from(s))
+            }
+        }
+
+        impl ::std::ops::Deref for #name {
+            type Target = #ref_type;
+
+            #[inline]
+            fn deref(&self) -> &Self::Target {
+                #ref_type::from_str(self.0.as_str())
+            }
+        }
+    }
+}
+
+fn fallible_conversion_impls(
+    name: &syn::Ident,
+    ref_type: &syn::Type,
+    wrapped_type: &syn::Type,
+    validator: &syn::Type,
+) -> proc_macro2::TokenStream {
+    quote! {
+        impl ::std::convert::TryFrom<#wrapped_type> for #name {
+            type Error = <#validator as ::braid::Validator>::Error;
+
+            #[inline]
+            fn try_from(s: #wrapped_type) -> Result<Self, Self::Error> {
+                Self::new(s)
+            }
+        }
+
+        impl ::std::convert::TryFrom<&'_ str> for #name {
+            type Error = <#validator as ::braid::Validator>::Error;
+
+            #[inline]
+            fn try_from(s: &str) -> Result<Self, Self::Error> {
+                Self::new(s)
+            }
+        }
+
+        impl ::std::ops::Deref for #name {
+            type Target = #ref_type;
+
+            #[inline]
+            #[allow(unsafe_code)]
+            fn deref(&self) -> &Self::Target {
+                // Safety: At this point, we are certain that the underlying string
+                // slice passes validation, so the implicit contract is satisfied.
+                unsafe { #ref_type::from_str_unchecked(self.0.as_str()) }
+            }
+        }
+    }
+}
+
+fn conversion_impls(
+    name: &syn::Ident,
+    ref_type: &syn::Type,
+    wrapped_type: &syn::Type,
+    validator: &Option<syn::Type>,
+) -> proc_macro2::TokenStream {
+    if let Some(validator) = validator {
+        fallible_conversion_impls(name, ref_type, wrapped_type, validator)
+    } else {
+        infallible_conversion_impls(name, ref_type, wrapped_type)
+    }
+}
+
+fn fallible_serde_tokens() -> proc_macro2::TokenStream {
+    quote! {.map_err(<D::Error as ::serde::de::Error>::custom)?}
+}
+
+pub fn serde_impls(
+    name: &syn::Ident,
+    is_fallible: bool,
+    wrapped_type: &syn::Type,
+) -> proc_macro2::TokenStream {
+    let handle_failure = is_fallible.then(fallible_serde_tokens);
+
+    quote! {
+        impl ::serde::Serialize for #name {
+            fn serialize<S: ::serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+                <#wrapped_type as ::serde::Serialize>::serialize(&self.0, serializer)
+            }
+        }
+
+        impl<'de> ::serde::Deserialize<'de> for #name {
+            fn deserialize<D: ::serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+                let raw = <#wrapped_type as ::serde::Deserialize<'de>>::deserialize(deserializer)?;
+                Ok(Self::new(raw)#handle_failure)
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use quote::format_ident;
+    use syn::parse_quote;
+
+    fn owned_ident() -> syn::Ident {
+        format_ident!("Owned")
+    }
+
+    // fn borrowed_type() -> syn::Type {
+    //     parse_quote!{ Borrowed }
+    // }
+
+    fn wrapped_type() -> syn::Type {
+        parse_quote! { Wrapped }
+    }
+
+    #[test]
+    fn expected_serde_impls_infallible() {
+        let name = owned_ident();
+        let wrapped: syn::Type = wrapped_type();
+
+        let actual = serde_impls(&name, false, &wrapped);
+        let expected = quote! {
+            impl ::serde::Serialize for Owned {
+                fn serialize<S: ::serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+                    <Wrapped as ::serde::Serialize>::serialize(&self.0, serializer)
+                }
+            }
+
+            impl<'de> ::serde::Deserialize<'de> for Owned {
+                fn deserialize<D: ::serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+                    let raw = <Wrapped as ::serde::Deserialize<'de>>::deserialize(deserializer)?;
+                    Ok(Self::new(raw))
+                }
+            }
+        };
+
+        assert_eq!(expected.to_string(), actual.to_string());
+    }
+
+    #[test]
+    fn expected_serde_impls_fallible() {
+        let name = owned_ident();
+        let wrapped: syn::Type = wrapped_type();
+
+        let actual = serde_impls(&name, true, &wrapped);
+        let expected = quote! {
+            impl ::serde::Serialize for Owned {
+                fn serialize<S: ::serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+                    <Wrapped as ::serde::Serialize>::serialize(&self.0, serializer)
+                }
+            }
+
+            impl<'de> ::serde::Deserialize<'de> for Owned {
+                fn deserialize<D: ::serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+                    let raw = <Wrapped as ::serde::Deserialize<'de>>::deserialize(deserializer)?;
+                    Ok(Self::new(raw).map_err(<D::Error as ::serde::de::Error>::custom)?)
+                }
+            }
+        };
+
+        assert_eq!(expected.to_string(), actual.to_string());
+    }
+}
