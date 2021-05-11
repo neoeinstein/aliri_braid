@@ -1,17 +1,19 @@
 [package]
-name = "braid"
+name = "aliri_braid_impl"
 version = "0.1.0"
 authors = ["Marcus Griep <marcus@griep.us>"]
 edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[lib]
+proc-macro = true
+
 [dependencies]
-braid_impl = { version = "0.1.0", path = "../braid_impl" }
+proc-macro2 = "1"
+quote = "1"
+syn = { version = "1", features = ["full"] }
 
 [dev-dependencies]
-quickcheck = "1"
-quickcheck_macros = "1.0.0"
 serde = { version = "1", features = [ "derive" ] }
 serde_json = "1"
-static_assertions = "1"

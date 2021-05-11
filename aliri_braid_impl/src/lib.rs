@@ -1,6 +1,7 @@
 extern crate proc_macro;
 
 mod borrow;
+mod check_mode;
 mod owned;
 mod symbol;
 

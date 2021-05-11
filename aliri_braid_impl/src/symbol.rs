@@ -10,6 +10,7 @@ pub const REF: Symbol = Symbol("ref");
 pub const REF_DOC: Symbol = Symbol("ref_doc");
 pub const SERDE: Symbol = Symbol("serde");
 pub const VALIDATOR: Symbol = Symbol("validator");
+pub const NORMALIZER: Symbol = Symbol("normalizer");
 
 impl PartialEq<Symbol> for Ident {
     fn eq(&self, word: &Symbol) -> bool {

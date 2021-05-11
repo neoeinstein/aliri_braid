@@ -1,5 +1,6 @@
 mod parameters;
 
+use crate::check_mode::CheckMode;
 pub use parameters::Parameters;
 use quote::{format_ident, quote, ToTokens};
 use std::convert::TryInto;
@@ -20,23 +21,31 @@ pub fn typed_string_params(
         derive_serde,
         no_auto_ref,
         ref_doc,
-        validate,
-        validator,
+        check_mode,
     } = params;
     let ref_type = ref_type.unwrap_or_else(|| infer_ref_type_from_owned_name(&body.ident));
 
     let wrapped_type = get_or_set_wrapped_type(&mut body.fields)?;
     let name = &body.ident;
-    let validator = validate.then(|| infer_validator(name, &validator));
+    let check_mode = check_mode.infer_validator_if_missing(name);
 
-    let inherent_impls = inherent_impls(name, &ref_type, &wrapped_type, &validator);
-    let common_impls = common_impls(name, &ref_type, &wrapped_type);
-    let conversion_impls = conversion_impls(name, &ref_type, &wrapped_type, &validator);
+    let inherent_impls = inherent_impls(name, &ref_type, &wrapped_type, &check_mode);
+    let common_impls = common_impls(name, &ref_type);
+    let conversion_impls = conversion_impls(name, &ref_type, &wrapped_type, &check_mode);
 
-    let serde_impls = derive_serde.then(|| serde_impls(name, validator.is_some(), &wrapped_type));
+    let serde_impls = derive_serde.then(|| serde_impls(name, &check_mode, &wrapped_type));
 
     let construct_ref_item = (!no_auto_ref)
-        .then(|| construct_ref_item(name, &body.vis, &ref_type, validator, derive_serde, ref_doc))
+        .then(|| {
+            construct_ref_item(
+                name,
+                &body.vis,
+                &ref_type,
+                check_mode,
+                derive_serde,
+                ref_doc,
+            )
+        })
         .transpose()?;
 
     let output = quote! {
@@ -120,15 +129,51 @@ fn fallible_owned_creation(ident: &syn::Ident, validator: &syn::Type) -> proc_ma
         \n\
         ## Safety\n\
         \n\
-        Consumers of this function must ensure that values conform to [`{}`].",
+        Consumers of this function must ensure that values conform to [`{}`]. \
+        Failure to maintain this invariant may lead to undefined behavior.",
         ident, validator_tokens
     );
 
     quote! {
         #[doc = #doc_comment]
-        pub fn new<S: Into<String> + AsRef<str>>(s: S) -> Result<Self, <#validator as ::braid::Validator>::Error> {
-            <#validator as ::braid::Validator>::validate(s.as_ref())?;
+        pub fn new<S: Into<String> + AsRef<str>>(s: S) -> Result<Self, <#validator as ::aliri_braid::Validator>::Error> {
+            <#validator as ::aliri_braid::Validator>::validate(s.as_ref())?;
             Ok(Self(s.into()))
+        }
+
+        #[doc = #doc_comment_unsafe]
+        pub unsafe fn new_unchecked<S: Into<String>>(s: S) -> Self {
+            Self(s.into())
+        }
+    }
+}
+
+fn normalized_owned_creation(
+    ident: &syn::Ident,
+    normalizer: &syn::Type,
+) -> proc_macro2::TokenStream {
+    let normalizer_tokens = normalizer.to_token_stream();
+    let doc_comment = format!(
+        "Constructs a new {} if it conforms to [`{}`] and performing normalization",
+        ident, normalizer_tokens
+    );
+
+    let doc_comment_unsafe = format!(
+        "Constructs a new {} without validation or normalization\n\
+        \n\
+        ## Safety\n\
+        \n\
+        Consumers of this function must ensure that values conform to [`{}`] and \
+        are in normalized form. Failure to maintain this invariant may lead to \
+        undefined behavior.",
+        ident, normalizer_tokens
+    );
+
+    quote! {
+        #[doc = #doc_comment]
+        pub fn new<S: AsRef<str>>(s: S) -> Result<Self, <#normalizer as ::aliri_braid::Normalizer>::Error> {
+            let result = <#normalizer as ::aliri_braid::Normalizer>::normalize(s.as_ref())?;
+            Ok(Self(result.into_owned()))
         }
 
         #[doc = #doc_comment_unsafe]
@@ -142,12 +187,12 @@ fn inherent_impls(
     name: &syn::Ident,
     ref_type: &syn::Type,
     wrapped_type: &syn::Type,
-    validator: &Option<syn::Type>,
+    check_mode: &CheckMode,
 ) -> proc_macro2::TokenStream {
-    let creation_functions = if let Some(validator) = validator {
-        fallible_owned_creation(name, validator)
-    } else {
-        infallible_owned_creation(name)
+    let creation_functions = match check_mode {
+        CheckMode::None => infallible_owned_creation(name),
+        CheckMode::Validate(validator) => fallible_owned_creation(name, validator),
+        CheckMode::Normalize(normalizer) => normalized_owned_creation(name, normalizer),
     };
 
     let doc_box = format!(
@@ -191,7 +236,7 @@ fn construct_ref_item(
     name: &syn::Ident,
     vis: &syn::Visibility,
     ref_type: &syn::Type,
-    validator: Option<syn::Type>,
+    check_mode: CheckMode,
     derive_serde: bool,
     ref_doc: Option<String>,
 ) -> Result<proc_macro2::TokenStream, syn::Error> {
@@ -202,7 +247,7 @@ fn construct_ref_item(
     crate::borrow::typed_string_ref_params(
         crate::borrow::Parameters {
             owned_type: Some(syn::parse_quote!(#name)),
-            validator,
+            check_mode,
             derive_serde,
         },
         syn::parse_quote! {
@@ -212,29 +257,11 @@ fn construct_ref_item(
     )
 }
 
-pub fn infer_validator(name: &syn::Ident, validator: &Option<syn::Type>) -> syn::Type {
-    let tokens = if let Some(validator) = validator {
-        validator.to_token_stream()
-    } else {
-        name.to_token_stream()
-    };
-
-    syn::parse_quote!(#tokens)
-}
-
 pub fn common_impls(
     name: &syn::Ident,
     ref_type: &syn::Type,
-    wrapped_type: &syn::Type,
 ) -> proc_macro2::TokenStream {
     quote! {
-        impl From<#name> for #wrapped_type {
-            #[inline]
-            fn from(outer: #name) -> Self {
-                outer.0
-            }
-        }
-
         impl From<&'_ #ref_type> for #name {
             #[inline]
             fn from(s: &#ref_type) -> Self {
@@ -311,7 +338,7 @@ fn fallible_conversion_impls(
 ) -> proc_macro2::TokenStream {
     quote! {
         impl ::std::convert::TryFrom<#wrapped_type> for #name {
-            type Error = <#validator as ::braid::Validator>::Error;
+            type Error = <#validator as ::aliri_braid::Validator>::Error;
 
             #[inline]
             fn try_from(s: #wrapped_type) -> Result<Self, Self::Error> {
@@ -320,7 +347,7 @@ fn fallible_conversion_impls(
         }
 
         impl ::std::convert::TryFrom<&'_ str> for #name {
-            type Error = <#validator as ::braid::Validator>::Error;
+            type Error = <#validator as ::aliri_braid::Validator>::Error;
 
             #[inline]
             fn try_from(s: &str) -> Result<Self, Self::Error> {
@@ -334,7 +361,46 @@ fn fallible_conversion_impls(
             #[inline]
             #[allow(unsafe_code)]
             fn deref(&self) -> &Self::Target {
-                // Safety: At this point, we are certain that the underlying string
+                // SAFETY: At this point, we are certain that the underlying string
+                // slice passes validation, so the implicit contract is satisfied.
+                unsafe { #ref_type::from_str_unchecked(self.0.as_str()) }
+            }
+        }
+    }
+}
+
+fn normalized_conversion_impls(
+    name: &syn::Ident,
+    ref_type: &syn::Type,
+    wrapped_type: &syn::Type,
+    normalizer: &syn::Type,
+) -> proc_macro2::TokenStream {
+    quote! {
+        impl ::std::convert::TryFrom<#wrapped_type> for #name {
+            type Error = <#normalizer as ::aliri_braid::Normalizer>::Error;
+
+            #[inline]
+            fn try_from(s: #wrapped_type) -> Result<Self, Self::Error> {
+                Self::new(s)
+            }
+        }
+
+        impl ::std::convert::TryFrom<&'_ str> for #name {
+            type Error = <#normalizer as ::aliri_braid::Normalizer>::Error;
+
+            #[inline]
+            fn try_from(s: &str) -> Result<Self, Self::Error> {
+                Self::new(s)
+            }
+        }
+
+        impl ::std::ops::Deref for #name {
+            type Target = #ref_type;
+
+            #[inline]
+            #[allow(unsafe_code)]
+            fn deref(&self) -> &Self::Target {
+                // SAFETY: At this point, we are certain that the underlying string
                 // slice passes validation, so the implicit contract is satisfied.
                 unsafe { #ref_type::from_str_unchecked(self.0.as_str()) }
             }
@@ -346,12 +412,16 @@ fn conversion_impls(
     name: &syn::Ident,
     ref_type: &syn::Type,
     wrapped_type: &syn::Type,
-    validator: &Option<syn::Type>,
+    check_mode: &CheckMode,
 ) -> proc_macro2::TokenStream {
-    if let Some(validator) = validator {
-        fallible_conversion_impls(name, ref_type, wrapped_type, validator)
-    } else {
-        infallible_conversion_impls(name, ref_type, wrapped_type)
+    match check_mode {
+        CheckMode::None => infallible_conversion_impls(name, ref_type, wrapped_type),
+        CheckMode::Validate(validator) => {
+            fallible_conversion_impls(name, ref_type, wrapped_type, validator)
+        }
+        CheckMode::Normalize(normalizer) => {
+            normalized_conversion_impls(name, ref_type, wrapped_type, normalizer)
+        }
     }
 }
 
@@ -361,10 +431,10 @@ fn fallible_serde_tokens() -> proc_macro2::TokenStream {
 
 pub fn serde_impls(
     name: &syn::Ident,
-    is_fallible: bool,
+    check_mode: &CheckMode,
     wrapped_type: &syn::Type,
 ) -> proc_macro2::TokenStream {
-    let handle_failure = is_fallible.then(fallible_serde_tokens);
+    let handle_failure = (!matches!(check_mode, CheckMode::None)).then(fallible_serde_tokens);
 
     quote! {
         impl ::serde::Serialize for #name {
@@ -392,6 +462,10 @@ mod tests {
         format_ident!("Owned")
     }
 
+    fn validating_type() -> syn::Type {
+        parse_quote! { TheValidator }
+    }
+
     // fn borrowed_type() -> syn::Type {
     //     parse_quote!{ Borrowed }
     // }
@@ -405,7 +479,7 @@ mod tests {
         let name = owned_ident();
         let wrapped: syn::Type = wrapped_type();
 
-        let actual = serde_impls(&name, false, &wrapped);
+        let actual = serde_impls(&name, &CheckMode::None, &wrapped);
         let expected = quote! {
             impl ::serde::Serialize for Owned {
                 fn serialize<S: ::serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
@@ -429,7 +503,7 @@ mod tests {
         let name = owned_ident();
         let wrapped: syn::Type = wrapped_type();
 
-        let actual = serde_impls(&name, true, &wrapped);
+        let actual = serde_impls(&name, &CheckMode::Validate(validating_type()), &wrapped);
         let expected = quote! {
             impl ::serde::Serialize for Owned {
                 fn serialize<S: ::serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {

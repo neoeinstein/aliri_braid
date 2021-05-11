@@ -1,4 +1,7 @@
-use braid::braid;
+#![deny(unsafe_code)]
+
+use aliri_braid::braid;
+use std::borrow::Cow;
 
 mod common;
 
@@ -34,13 +37,33 @@ impl std::fmt::Display for InvalidData {
 }
 impl std::error::Error for InvalidData {}
 
-impl braid::Validator for ValidatedBuf {
+impl aliri_braid::Validator for ValidatedBuf {
     type Error = InvalidData;
     fn validate(s: &str) -> Result<(), Self::Error> {
         if s.chars().any(|c| c.len_utf8() > 3) {
             Err(InvalidData)
         } else {
             Ok(())
+        }
+    }
+}
+
+#[braid(
+    serde,
+    normalizer,
+    ref_doc = "A reference to a cool new orange, that isn't yours!"
+)]
+pub struct NormalizedBuf;
+
+impl aliri_braid::Normalizer for NormalizedBuf {
+    type Error = InvalidData;
+    fn normalize(s: &str) -> Result<Cow<str>, Self::Error> {
+        if s.chars().any(|c| c.len_utf8() > 3) {
+            Err(InvalidData)
+        } else if s.contains(' ') {
+            Ok(Cow::Owned(s.replace(" ", "")))
+        } else {
+            Ok(Cow::Borrowed(s))
         }
     }
 }

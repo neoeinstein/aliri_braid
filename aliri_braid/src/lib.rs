@@ -11,7 +11,7 @@
 //! generate the borrowed form of the strong type.
 //!
 //! ```
-//! use braid::braid;
+//! use aliri_braid::braid;
 //!
 //! #[braid]
 //! pub struct DatabaseName;
@@ -20,7 +20,7 @@
 //! Once created, braids can be passed around as strongly-typed strings.
 //!
 //! ```
-//!# use braid::braid;
+//!# use aliri_braid::braid;
 //!#
 //! fn take_strong_string(n: DatabaseName) {}
 //! fn borrow_strong_string(n: &DatabaseNameRef) {}
@@ -36,7 +36,7 @@
 //! A braid can also be untyped for use in stringly-typed interfaces.
 //!
 //! ```
-//!# use braid::braid;
+//!# use aliri_braid::braid;
 //!#
 //! fn take_raw_string(s: String) {}
 //! fn borrow_raw_str(s: &str) {}
@@ -53,7 +53,7 @@
 //! with `Ref` appended to the end.
 //!
 //! ```
-//!# use braid::braid;
+//!# use aliri_braid::braid;
 //!#
 //! #[braid]
 //! pub struct DatabaseName;
@@ -68,7 +68,7 @@
 //! [`PathBuf`][std::path::PathBuf] and [`Path`][std::path::Path].
 //!
 //! ```
-//!# use braid::braid;
+//!# use aliri_braid::braid;
 //!#
 //! #[braid]
 //! pub struct DatabaseNameBuf;
@@ -83,7 +83,7 @@
 //! parameter.
 //!
 //! ```
-//!# use braid::braid;
+//!# use aliri_braid::braid;
 //!#
 //! #[braid(ref = "TempDb")]
 //! pub struct DatabaseNameBuf;
@@ -99,7 +99,7 @@
 //! documentation.
 //!
 //! ```
-//!# use braid::braid;
+//!# use aliri_braid::braid;
 //!#
 //! #[braid(ref_doc = "A temporary reference to a database name")]
 //! pub struct DatabaseName;
@@ -118,7 +118,7 @@
 //! extended to support some mutation and introspection.
 //!
 //! ```
-//!# use braid::braid;
+//!# use aliri_braid::braid;
 //!#
 //! #[braid]
 //! pub struct AmazonArnBuf;
@@ -154,7 +154,7 @@
 //!
 //! ```
 //! mod amazon_arn {
-//!     #[braid::braid]
+//!     #[aliri_braid::braid]
 //!     pub struct AmazonArnBuf;
 //!
 //!     /* Additional impls that need access to the inner values */
@@ -188,7 +188,7 @@
 //! the block creating `ex_ref`.
 //!
 //! ```compile_fail
-//!# use braid::braid;
+//!# use aliri_braid::braid;
 //!#
 //!# #[braid]
 //!# pub struct DatabaseName;
@@ -226,7 +226,7 @@
 //! described in the section on [encapsulation](#encapsulation).
 //!
 //! ```
-//!# use braid::braid;
+//!# use aliri_braid::braid;
 //!#
 //! #[derive(Debug, PartialEq, Eq)]
 //! pub struct InvalidUsername;
@@ -241,7 +241,7 @@
 //! #[braid(validator)]
 //! pub struct NonRootUsername;
 //!
-//! impl braid::Validator for NonRootUsername {
+//! impl aliri_braid::Validator for NonRootUsername {
 //!     type Error = InvalidUsername;
 //!     fn validate(s: &str) -> Result<(), Self::Error> {
 //!         if s.is_empty() || s.eq_ignore_ascii_case("root") {
@@ -265,7 +265,7 @@
 //! implements the validation logic.
 //!
 //! ```
-//!# use braid::braid;
+//!# use aliri_braid::braid;
 //!#
 //!# #[derive(Debug, PartialEq, Eq)]
 //!# pub struct InvalidUsername;
@@ -282,7 +282,7 @@
 //!
 //! pub struct UsernameValidator;
 //!
-//! impl braid::Validator for UsernameValidator {
+//! impl aliri_braid::Validator for UsernameValidator {
 //!     /* … */
 //!#     type Error = InvalidUsername;
 //!#     fn validate(s: &str) -> Result<(), Self::Error> {
@@ -303,13 +303,76 @@
 //! assert!(NonRootUsernameRef::from_str("nobody").is_ok());
 //! ```
 //!
+//! ### Normalization
+//!
+//! Braided strings can also have enforced normalization, which is carried out at the creation
+//! boundary. In this case, the `.from_str()` function on the borrowed form will return a
+//! [`Cow`][std::borrow::Cow]`<Borrowed>`, which can be inspected to determine whether
+//! normalization and conversion to an owned value was required. In cases where the incoming
+//! value is expected to already be normalized, the `.from_normalized_str()` function can
+//! be used. This function will return an error if the value required normalization.
+//!
+//! When using `serde` to deserialze directly to the borrowed form, care must be taken, as
+//! only already normalized values will be able to be deserialized. If normalization is
+//! expected, deserialize into the owned form or `Cow<Borrowed>`.
+//!
+//! Here is a toy example where the value must not be empty and must be composed of ASCII
+//! characters, but that is also normalized to use lowercase ASCII letters.
+//!
+//! ```
+//!# use aliri_braid::braid;
+//! use std::borrow::Cow;
+//!
+//! #[derive(Debug, PartialEq, Eq)]
+//! pub struct InvalidHeaderName;
+//! // Error implementation elided
+//!# impl std::fmt::Display for InvalidHeaderName {
+//!#     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+//!#         f.write_str("invalid header name")
+//!#     }
+//!# }
+//!# impl std::error::Error for InvalidHeaderName {}
+//!
+//! #[braid(normalizer)]
+//! pub struct HeaderName;
+//!
+//! impl aliri_braid::Normalizer for HeaderName {
+//!     type Error = InvalidHeaderName;
+//!     fn normalize(s: &str) -> Result<Cow<str>, Self::Error> {
+//!         if !s.is_ascii() || s.is_empty() {
+//!             Err(InvalidHeaderName)
+//!         } else if s.as_bytes().iter().any(|&b| b'A' <= b && b <= b'Z') {
+//!             Ok(Cow::Owned(s.to_ascii_lowercase()))
+//!         } else {
+//!             Ok(Cow::Borrowed(s))
+//!         }
+//!     }
+//! }
+//!
+//! assert!(HeaderName::new("").is_err());
+//! assert_eq!("mixedcase", HeaderName::new("MixedCase").unwrap().as_str());
+//! assert_eq!("lowercase", HeaderName::new("lowercase").unwrap().as_str());
+//!
+//! assert!(HeaderNameRef::from_str("").is_err());
+//! assert_eq!("mixedcase", HeaderNameRef::from_str("MixedCase").unwrap().as_str());
+//! assert_eq!("lowercase", HeaderNameRef::from_str("lowercase").unwrap().as_str());
+//!
+//! assert!(HeaderNameRef::from_normalized_str("").is_err());
+//! assert!(HeaderNameRef::from_normalized_str("MixedCase").is_err());
+//! assert_eq!("lowercase", HeaderNameRef::from_normalized_str("lowercase").unwrap().as_str());
+//! ```
+//!
 //! ### Unchecked creation
 //!
-//! A braided string, however, can only have that guarantee violated through the use of the
-//! unsafe `new_unchecked()` function.
+//! Where necessary for efficiency, it is possible to bypass the validations on creation through
+//! the use of the `.new_unchecked()` or `from_str_unchecked()` functions. These functions are
+//! marked as `unsafe`, as they require the caller to assert that they are fulfilling the
+//! implicit contract that the value be both valid and in normal form. If either of these
+//! constraints are violated, undefined behavior could result when downstream consumers depend
+//! on these constraints being upheld.
 //!
 //! ```compile_fail
-//!# use braid::braid;
+//!# use aliri_braid::braid;
 //!#
 //!# #[derive(Debug, PartialEq, Eq)]
 //!# pub struct InvalidUsername;
@@ -324,7 +387,7 @@
 //!# #[braid(validator)]
 //!# pub struct NonRootUsername;
 //!#
-//!# impl braid::Validator for NonRootUsername {
+//!# impl aliri_braid::Validator for NonRootUsername {
 //!#     type Error = InvalidUsername;
 //!#     fn validate(s: &str) -> Result<(), Self::Error> {
 //!#         if s.is_empty() || s.eq_ignore_ascii_case("root") {
@@ -342,7 +405,7 @@
 //! If you find violations of your guarantees, you can look specifically for uses of `unsafe`.
 //!
 //! ```
-//!# use braid::braid;
+//!# use aliri_braid::braid;
 //!#
 //!# #[derive(Debug, PartialEq, Eq)]
 //!# pub struct InvalidUsername;
@@ -357,7 +420,7 @@
 //!# #[braid(validator)]
 //!# pub struct NonRootUsername;
 //!#
-//!# impl braid::Validator for NonRootUsername {
+//!# impl aliri_braid::Validator for NonRootUsername {
 //!#     type Error = InvalidUsername;
 //!#     fn validate(s: &str) -> Result<(), Self::Error> {
 //!#         if s.is_empty() || s.eq_ignore_ascii_case("root") {
@@ -374,9 +437,6 @@
 //! }
 //! ```
 //!
-//! This gives you the power to bypass validation through the use of `unsafe` when you can
-//! guarantee the value is value.
-//!
 //! ## Provided trait impls
 //!
 //! By default, the following traits will be automatically implemented.
@@ -386,13 +446,14 @@
 //! * [`std::fmt::Debug`]
 //! * [`std::fmt::Display`]
 //! * [`std::hash::Hash`]
+//! * [`std::cmp::Eq`]
 //! * [`std::cmp::PartialEq<Owned>`]
 //! * [`std::cmp::PartialEq<Borrowed>`]
 //! * [`std::cmp::PartialEq<&Borrowed>`]
 //! * [`std::cmp::PartialEq<Box<Borrowed>>`]
-//! * [`std::cmp::Eq`]
 //! * [`std::convert::AsRef<Borrowed>`]
 //! * [`std::convert::AsRef<str>`]
+//! * [`std::convert::From<&Borrowed>`]
 //! * [`std::borrow::Borrow<Borrowed>`]
 //! * [`std::ops::Deref`] where `Target = Borrowed`
 //!
@@ -400,28 +461,31 @@
 //! * [`std::convert::From<String>`]
 //! * [`std::convert::From<&str>`]
 //!
-//! Validated owned types will instead implement
+//! Validated and normalized owned types will instead implement
 //! * [`std::convert::TryFrom<String>`]
 //! * [`std::convert::TryFrom<&str>`]
 //!
+//! When normalized, the above conversions will normalize values.
+//!
 //! For the `Borrowed` type
-//! * [`std::clone::Clone`]
 //! * [`std::fmt::Debug`]
 //! * [`std::fmt::Display`]
 //! * [`std::hash::Hash`]
+//! * [`std::cmp::Eq`]
 //! * [`std::cmp::PartialEq<Owned>`]
 //! * [`std::cmp::PartialEq<Borrowed>`]
 //! * [`std::cmp::PartialEq<&Borrowed>`]
 //! * [`std::cmp::PartialEq<Box<Borrowed>>`]
-//! * [`std::cmp::Eq`]
 //! * [`std::borrow::ToOwned`] where `Owned = Owned`
 //! * [`std::convert::AsRef<str>`]
 //!
 //! Additionally, unvalidated borrowed types implement
 //! * [`std::convert::From<&str>`]
 //!
-//! Validated owned types will instead implement
+//! Validated and normalize borrowed types will instead implement
 //! * [`std::convert::TryFrom<&str>`]
+//!
+//! The above conversion will fail if the value is not already normalized.
 //!
 //! `Deref` to a `str` is explicitly not implemented. This means that an explicit call is
 //! required to treat a value as an untyped string, whether `.as_str()`, `.to_string()`, or
@@ -437,7 +501,7 @@
 //!   [`Deserialize`]: https://docs.rs/serde/*/serde/trait.Deserialize.html
 //!
 //! ```
-//!# use braid::braid;
+//!# use aliri_braid::braid;
 //!#
 //! #[braid(serde)]
 //! pub struct Username;
@@ -453,7 +517,7 @@
 //! still protecting the integrity of the type.
 //!
 //! ```
-//!# use braid::braid;
+//!# use aliri_braid::braid;
 //!#
 //! #[derive(Debug, PartialEq, Eq)]
 //! pub struct InvalidUsername;
@@ -468,7 +532,7 @@
 //! #[braid(serde, validator)]
 //! pub struct Username;
 //!
-//! impl braid::Validator for Username {
+//! impl aliri_braid::Validator for Username {
 //!     type Error = InvalidUsername;
 //!     fn validate(s: &str) -> Result<(), Self::Error> {
 //!         if s.is_empty() || s.eq_ignore_ascii_case("root") {
@@ -495,7 +559,9 @@
 //! macro, using the `#![forbid(unsafe_code)]` lint level on a crate that generates
 //! braids will result in compiler errors. Instead, the crate can be annotated with
 //! `#![deny(unsafe_code)]`, which allows for overrides as appropriate. The functions
-//! that require `unsafe` to work correctly are annotated with `#[allow(unsafe_code)]`.
+//! that require `unsafe` to work correctly are annotated with `#[allow(unsafe_code)]`,
+//! and all usages of unsafe that the macro generates are annotated with `SAFETY`
+//! code comments.
 //!
 //! If strict adherence to forbid unsafe code is required, then the types can be
 //! segregated into an accessory crate without the prohibition, and then consumed
@@ -516,14 +582,77 @@
 )]
 #![forbid(unsafe_code)]
 
+use std::{borrow::Cow, error, fmt};
+
 /// A validator that can verify a given is valid given certain preconditions
 pub trait Validator {
     /// The error produced when the string is invalid
-    type Error: std::error::Error + Send + Sync + 'static;
+    type Error: error::Error + Send + Sync + 'static;
 
     /// Validates a string according to a predetermined set of rules
     fn validate(s: &str) -> Result<(), Self::Error>;
 }
 
-pub use braid_impl::braid;
-pub use braid_impl::braid_ref;
+/// A validator that can verify a given is valid given certain preconditions
+pub trait Normalizer {
+    /// The error produced when the string is invalid
+    type Error: error::Error + Send + Sync + 'static;
+
+    /// Validates a string according to a predetermined set of rules
+    fn normalize(s: &str) -> Result<Cow<str>, Self::Error>;
+}
+
+/// An error when validating a normalizable value, disallowing normalization
+#[derive(Debug, PartialEq, Eq)]
+pub enum NormalizationError<E> {
+    /// The value was normalizable, but is not normalized
+    ValueNotNormal,
+    /// The value was not valid and could not be normalized
+    ValidatorError(E),
+}
+
+impl<E> fmt::Display for NormalizationError<E> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Self::ValueNotNormal => f.write_str("value is not normalized"),
+            Self::ValidatorError(_) => f.write_str("value is invalid and cannot be normalized"),
+        }
+    }
+}
+
+impl<E> error::Error for NormalizationError<E>
+where
+    E: error::Error + 'static,
+{
+    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
+        match self {
+            Self::ValueNotNormal => None,
+            Self::ValidatorError(err) => Some(err),
+        }
+    }
+}
+
+impl<E> From<E> for NormalizationError<E> {
+    fn from(e: E) -> Self {
+        Self::ValidatorError(e)
+    }
+}
+
+impl<T> Validator for T
+where
+    T: Normalizer,
+{
+    type Error = NormalizationError<T::Error>;
+
+    /// Validates the provided value, but additionally returns an error if the
+    /// value is not already in normalized form
+    fn validate(s: &str) -> Result<(), Self::Error> {
+        match Self::normalize(s)? {
+            Cow::Borrowed(_) => Ok(()),
+            Cow::Owned(_) => Err(NormalizationError::ValueNotNormal),
+        }
+    }
+}
+
+pub use aliri_braid_impl::braid;
+//pub use aliri_braid_impl::braid_ref;
