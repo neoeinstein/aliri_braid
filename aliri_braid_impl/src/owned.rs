@@ -319,6 +319,15 @@ fn infallible_conversion_impls(
             }
         }
 
+        impl ::std::str::FromStr for #name {
+            type Err = ::std::convert::Infallible;
+
+            #[inline]
+            fn from_str(s: &str) -> Result<Self, Self::Err> {
+                Ok(Self::from(s))
+            }
+        }
+
         impl ::std::ops::Deref for #name {
             type Target = #ref_type;
 
@@ -351,6 +360,15 @@ fn fallible_conversion_impls(
 
             #[inline]
             fn try_from(s: &str) -> Result<Self, Self::Error> {
+                Self::new(s)
+            }
+        }
+
+        impl ::std::str::FromStr for #name {
+            type Err = <#validator as ::aliri_braid::Validator>::Error;
+
+            #[inline]
+            fn from_str(s: &str) -> Result<Self, Self::Err> {
                 Self::new(s)
             }
         }
@@ -390,6 +408,15 @@ fn normalized_conversion_impls(
 
             #[inline]
             fn try_from(s: &str) -> Result<Self, Self::Error> {
+                Self::new(s)
+            }
+        }
+
+        impl ::std::str::FromStr for #name {
+            type Err = <#normalizer as ::aliri_braid::Normalizer>::Error;
+
+            #[inline]
+            fn from_str(s: &str) -> Result<Self, Self::Err> {
                 Self::new(s)
             }
         }

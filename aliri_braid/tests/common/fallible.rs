@@ -1,7 +1,7 @@
 use crate::{Validated, ValidatedBuf};
 use quickcheck_macros::quickcheck;
 use static_assertions::{assert_eq_align, assert_eq_size, assert_eq_size_ptr, assert_eq_size_val};
-use std::collections::HashSet;
+use std::{collections::HashSet, convert::TryInto};
 
 #[test]
 pub fn equality_tests() -> Result<(), Box<dyn std::error::Error>> {
@@ -24,6 +24,45 @@ pub fn equality_tests() -> Result<(), Box<dyn std::error::Error>> {
     assert_eq!(x, z.into_owned());
 
     Ok(())
+}
+
+#[test]
+pub fn parsing_owned_pass() -> Result<(), Box<dyn std::error::Error>> {
+    let x: ValidatedBuf = "One".parse()?;
+    assert_eq!("One", x.as_str());
+    Ok(())
+}
+
+#[test]
+#[should_panic]
+pub fn parsing_owned_fails() {
+    let _: ValidatedBuf = "Test 🏗".parse().unwrap();
+}
+
+#[test]
+pub fn try_from_owned_pass() -> Result<(), Box<dyn std::error::Error>> {
+    let x: ValidatedBuf = "One".try_into()?;
+    assert_eq!("One", x.as_str());
+    Ok(())
+}
+
+#[test]
+#[should_panic]
+pub fn try_from_owned_fails() {
+    let _: ValidatedBuf = "Test 🏗".try_into().unwrap();
+}
+
+#[test]
+pub fn try_from_borrowed_pass() -> Result<(), Box<dyn std::error::Error>> {
+    let x: &Validated = "One".try_into()?;
+    assert_eq!("One", x.as_str());
+    Ok(())
+}
+
+#[test]
+#[should_panic]
+pub fn try_from_borrowed_fails() {
+    let _: &Validated = "Test 🏗".try_into().unwrap();
 }
 
 #[test]

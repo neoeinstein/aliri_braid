@@ -417,6 +417,7 @@ fn conversion_impls(name: &syn::Ident, check_mode: &CheckMode) -> proc_macro2::T
         CheckMode::Validate(validator) => quote! {
             impl<'a> std::convert::TryFrom<&'a str> for &'a #name {
                 type Error = <#validator as ::aliri_braid::Validator>::Error;
+
                 fn try_from(s: &'a str) -> Result<&'a #name, Self::Error> {
                     #name::from_str(s)
                 }
@@ -425,6 +426,7 @@ fn conversion_impls(name: &syn::Ident, check_mode: &CheckMode) -> proc_macro2::T
         CheckMode::Normalize(normalizer) => quote! {
             impl<'a> std::convert::TryFrom<&'a str> for &'a #name {
                 type Error = <#normalizer as ::aliri_braid::Validator>::Error;
+
                 fn try_from(s: &'a str) -> Result<&'a #name, Self::Error> {
                     #name::from_normalized_str(s)
                 }

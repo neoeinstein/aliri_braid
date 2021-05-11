@@ -1,7 +1,7 @@
 use crate::{Orange, OrangeRef};
 use quickcheck_macros::quickcheck;
 use static_assertions::{assert_eq_align, assert_eq_size, assert_eq_size_ptr, assert_eq_size_val};
-use std::collections::HashSet;
+use std::{collections::HashSet, convert::TryInto};
 
 #[test]
 pub fn equality_tests() {
@@ -80,6 +80,33 @@ fn can_use_as_hash_keys() -> Result<(), Box<dyn std::error::Error>> {
 
     assert!(map.is_empty());
 
+    Ok(())
+}
+
+#[test]
+pub fn parsing_owned_pass() -> Result<(), Box<dyn std::error::Error>> {
+    let x: Orange = "One".parse()?;
+    assert_eq!("One", x.as_str());
+    Ok(())
+}
+
+#[test]
+pub fn from_owned_pass() {
+    let x: Orange = "One".into();
+    assert_eq!("One", x.as_str());
+}
+
+#[test]
+pub fn try_from_owned_pass() -> Result<(), Box<dyn std::error::Error>> {
+    let x: Orange = "One".try_into()?;
+    assert_eq!("One", x.as_str());
+    Ok(())
+}
+
+#[test]
+pub fn try_from_borrowed_pass() -> Result<(), Box<dyn std::error::Error>> {
+    let x: &OrangeRef = "One".try_into()?;
+    assert_eq!("One", x.as_str());
     Ok(())
 }
 

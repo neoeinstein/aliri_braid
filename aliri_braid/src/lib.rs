@@ -455,6 +455,7 @@
 //! * [`std::convert::AsRef<str>`]
 //! * [`std::convert::From<&Borrowed>`]
 //! * [`std::borrow::Borrow<Borrowed>`]
+//! * [`std::str::FromStr`]
 //! * [`std::ops::Deref`] where `Target = Borrowed`
 //!
 //! Additionally, unvalidated owned types implement

@@ -1,7 +1,7 @@
 use crate::{Normalized, NormalizedBuf};
 use quickcheck_macros::quickcheck;
 use static_assertions::{assert_eq_align, assert_eq_size, assert_eq_size_ptr, assert_eq_size_val};
-use std::collections::HashSet;
+use std::{collections::HashSet, convert::TryInto};
 
 #[test]
 pub fn equality_tests() -> Result<(), Box<dyn std::error::Error>> {
@@ -24,6 +24,65 @@ pub fn equality_tests() -> Result<(), Box<dyn std::error::Error>> {
     assert_eq!(x, z.into_owned());
 
     Ok(())
+}
+
+#[test]
+pub fn parsing_owned_pass() -> Result<(), Box<dyn std::error::Error>> {
+    let x: NormalizedBuf = "One".parse()?;
+    assert_eq!("One", x.as_str());
+    Ok(())
+}
+
+#[test]
+pub fn parsing_owned_non_normal_pass() -> Result<(), Box<dyn std::error::Error>> {
+    let x: NormalizedBuf = "One Two".parse()?;
+    assert_eq!("OneTwo", x.as_str());
+    Ok(())
+}
+
+#[test]
+#[should_panic]
+pub fn parsing_owned_fails() {
+    let _: NormalizedBuf = "Test 🏗".parse().unwrap();
+}
+
+#[test]
+pub fn try_from_owned_pass() -> Result<(), Box<dyn std::error::Error>> {
+    let x: NormalizedBuf = "One".try_into()?;
+    assert_eq!("One", x.as_str());
+    Ok(())
+}
+
+#[test]
+pub fn try_from_owned_non_normal_pass() -> Result<(), Box<dyn std::error::Error>> {
+    let x: NormalizedBuf = "One Two".try_into()?;
+    assert_eq!("OneTwo", x.as_str());
+    Ok(())
+}
+
+#[test]
+#[should_panic]
+pub fn try_from_owned_fails() {
+    let _: NormalizedBuf = "Test 🏗".try_into().unwrap();
+}
+
+#[test]
+pub fn try_from_borrowed_pass() -> Result<(), Box<dyn std::error::Error>> {
+    let x: &Normalized = "One".try_into()?;
+    assert_eq!("One", x.as_str());
+    Ok(())
+}
+
+#[test]
+#[should_panic]
+pub fn try_from_borrowed_non_normal_fails() {
+    let _: &Normalized = "One Two".try_into().unwrap();
+}
+
+#[test]
+#[should_panic]
+pub fn try_from_borrowed_fails() {
+    let _: &Normalized = "Test 🏗".try_into().unwrap();
 }
 
 #[test]
