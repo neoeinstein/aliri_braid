@@ -1,8 +1,14 @@
 [package]
 name = "aliri_braid"
+description = "Improve and strengthen your strings by making them strongly-typed with less boilerplate"
+keywords = [ "string", "newtype", "validation", "normalization" ]
+categories = [ "data-structures", "rust-patterns" ]
 version = "0.1.0"
 authors = ["Marcus Griep <marcus@griep.us>"]
 edition = "2018"
+readme = "../README.md"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/neoeinstein/aliri_braid"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

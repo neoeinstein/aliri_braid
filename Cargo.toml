@@ -2,3 +2,6 @@
 members = [
     "aliri_braid",
 ]
+
+# Generate README
+# cargo readme -r aliri_braid/ -o ../README.md --no-indent-headings --no-license
