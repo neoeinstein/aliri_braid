@@ -495,6 +495,7 @@ pub fn serde_impls(
             // }
             //
             #[doc = #deserialize_doc]
+            #[allow(clippy::needless_question_mark)]
             impl<'de: 'a, 'a> ::serde::Deserialize<'de> for &'a #name {
                 fn deserialize<D: ::serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
                     let raw = <&str as ::serde::Deserialize<'de>>::deserialize(deserializer)?;
@@ -504,6 +505,7 @@ pub fn serde_impls(
         }
     } else {
         quote! {
+            #[allow(clippy::needless_question_mark)]
             impl<'de: 'a, 'a> ::serde::Deserialize<'de> for &'a #name {
                 fn deserialize<D: ::serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
                     let raw = <&str as ::serde::Deserialize<'de>>::deserialize(deserializer)?;

@@ -470,6 +470,7 @@ pub fn serde_impls(
             }
         }
 
+        #[allow(clippy::needless_question_mark)]
         impl<'de> ::serde::Deserialize<'de> for #name {
             fn deserialize<D: ::serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
                 let raw = <#wrapped_type as ::serde::Deserialize<'de>>::deserialize(deserializer)?;
