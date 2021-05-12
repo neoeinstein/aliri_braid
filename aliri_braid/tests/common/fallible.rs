@@ -220,6 +220,7 @@ fn check_reference_size() {
 }
 
 #[test]
+#[allow(clippy::forget_ref, clippy::transmute_ptr_to_ptr)]
 fn check_reference_size_ptr() {
     let s = "source";
     let y: &Validated = Validated::from_str(s).unwrap();
@@ -227,6 +228,7 @@ fn check_reference_size_ptr() {
 }
 
 #[test]
+#[allow(clippy::forget_ref, clippy::transmute_ptr_to_ptr)]
 fn check_reference_size_val() {
     let s = "source";
     let y: &Validated = Validated::from_str(s).unwrap();

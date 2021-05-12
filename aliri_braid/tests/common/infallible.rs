@@ -61,29 +61,6 @@ fn owned_and_borrowed_hashes_are_equivalent(s: String) -> bool {
 }
 
 #[test]
-fn can_use_as_hash_keys() -> Result<(), Box<dyn std::error::Error>> {
-    let mut map = HashSet::new();
-
-    assert!(map.insert(Orange::new("One")));
-    assert!(map.insert(Orange::new("Seven")));
-
-    assert!(map.contains(OrangeRef::from_str("One")));
-    assert!(map.contains(&Orange::new("One")));
-    assert!(!map.contains(OrangeRef::from_str("Two")));
-
-    assert!(!map.remove(OrangeRef::from_str("Two")));
-    assert!(map.remove(OrangeRef::from_str("One")));
-    assert!(!map.remove(OrangeRef::from_str("One")));
-
-    assert!(map.remove(&Orange::new("Seven")));
-    assert!(!map.remove(OrangeRef::from_str("Seven")));
-
-    assert!(map.is_empty());
-
-    Ok(())
-}
-
-#[test]
 pub fn parsing_owned_pass() -> Result<(), Box<dyn std::error::Error>> {
     let x: Orange = "One".parse()?;
     assert_eq!("One", x.as_str());
@@ -111,7 +88,28 @@ pub fn try_from_borrowed_pass() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 #[test]
-fn can_use_refs_as_hash_keys() -> Result<(), Box<dyn std::error::Error>> {
+fn can_use_as_hash_keys() {
+    let mut map = HashSet::new();
+
+    assert!(map.insert(Orange::new("One")));
+    assert!(map.insert(Orange::new("Seven")));
+
+    assert!(map.contains(OrangeRef::from_str("One")));
+    assert!(map.contains(&Orange::new("One")));
+    assert!(!map.contains(OrangeRef::from_str("Two")));
+
+    assert!(!map.remove(OrangeRef::from_str("Two")));
+    assert!(map.remove(OrangeRef::from_str("One")));
+    assert!(!map.remove(OrangeRef::from_str("One")));
+
+    assert!(map.remove(&Orange::new("Seven")));
+    assert!(!map.remove(OrangeRef::from_str("Seven")));
+
+    assert!(map.is_empty());
+}
+
+#[test]
+fn can_use_refs_as_hash_keys() {
     let mut map = HashSet::new();
 
     assert!(map.insert(OrangeRef::from_str("One")));
@@ -129,8 +127,6 @@ fn can_use_refs_as_hash_keys() -> Result<(), Box<dyn std::error::Error>> {
     assert!(!map.remove(OrangeRef::from_str("Seven")));
 
     assert!(map.is_empty());
-
-    Ok(())
 }
 
 #[test]
@@ -172,6 +168,7 @@ fn check_reference_size() {
 }
 
 #[test]
+#[allow(clippy::forget_ref, clippy::transmute_ptr_to_ptr)]
 fn check_reference_size_ptr() {
     let s = "source";
     let y: &OrangeRef = OrangeRef::from_str(s);
@@ -179,6 +176,7 @@ fn check_reference_size_ptr() {
 }
 
 #[test]
+#[allow(clippy::forget_ref, clippy::transmute_ptr_to_ptr)]
 fn check_reference_size_val() {
     let s = "source";
     let y: &OrangeRef = OrangeRef::from_str(s);
