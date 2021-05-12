@@ -180,8 +180,8 @@ fn verify_serialization_fail_owned() {
 
 #[test]
 fn verify_serialization_pass_borrow() -> Result<(), Box<dyn std::error::Error>> {
-    const SERIALIZATION: &str = "\"Test ;\"";
-    let expected = Validated::from_str("Test ;")?;
+    const SERIALIZATION: &str = "\"Test \u{037E}\"";
+    let expected = Validated::from_str("Test \u{037E}")?;
     let actual: &Validated = serde_json::from_str(&SERIALIZATION)?;
     assert_eq!(expected, actual);
     Ok(())
@@ -189,8 +189,8 @@ fn verify_serialization_pass_borrow() -> Result<(), Box<dyn std::error::Error>> 
 
 #[test]
 fn verify_serialization_pass_boxed() -> Result<(), Box<dyn std::error::Error>> {
-    const SERIALIZATION: &str = "\"Test ;\"";
-    let expected = Validated::from_str("Test ;")?;
+    const SERIALIZATION: &str = "\"Test \u{037E}\"";
+    let expected = Validated::from_str("Test \u{037E}")?;
     let actual: Box<Validated> = serde_json::from_str(&SERIALIZATION)?;
     assert_eq!(expected, actual);
     Ok(())
@@ -198,8 +198,8 @@ fn verify_serialization_pass_boxed() -> Result<(), Box<dyn std::error::Error>> {
 
 #[test]
 fn verify_serialization_pass_owned() -> Result<(), Box<dyn std::error::Error>> {
-    const SERIALIZATION: &str = "\"Test ;\"";
-    let expected = Validated::from_str("Test ;")?;
+    const SERIALIZATION: &str = "\"Test \u{037E}\"";
+    let expected = Validated::from_str("Test \u{037E}")?;
     let actual: ValidatedBuf = serde_json::from_str(&SERIALIZATION)?;
     assert_eq!(expected, actual);
     Ok(())

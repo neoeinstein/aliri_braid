@@ -35,7 +35,7 @@ impl aliri_braid::Validator for ScopeToken {
             .as_bytes()
             .iter()
             .enumerate()
-            .find(|(_, &b)| b <= 0x20 || b == 0x22 || b == 0x5C)
+            .find(|(_, &b)| b <= 0x20 || b == 0x22 || b == 0x5C || 0x7F <= b)
         {
             Err(InvalidScopeToken::InvalidCharacter { position, value })
         } else {
@@ -61,8 +61,38 @@ mod tests {
     }
 
     #[test]
-    fn owned_rejects_invalid() {
+    fn owned_rejects_invalid_quote() {
         let x = ScopeToken::new("https://crates.io/scopes/\"publish:crate\"");
+        assert!(matches!(x, Err(InvalidScopeToken::InvalidCharacter { .. })));
+    }
+
+    #[test]
+    fn owned_rejects_invalid_control() {
+        let x = ScopeToken::new("https://crates.io/scopes/\tpublish:crate");
+        assert!(matches!(x, Err(InvalidScopeToken::InvalidCharacter { .. })));
+    }
+
+    #[test]
+    fn owned_rejects_invalid_backslash() {
+        let x = ScopeToken::new("https://crates.io/scopes/\\publish:crate");
+        assert!(matches!(x, Err(InvalidScopeToken::InvalidCharacter { .. })));
+    }
+
+    #[test]
+    fn owned_rejects_invalid_delete() {
+        let x = ScopeToken::new("https://crates.io/scopes/\x7Fpublish:crate");
+        assert!(matches!(x, Err(InvalidScopeToken::InvalidCharacter { .. })));
+    }
+
+    #[test]
+    fn owned_rejects_invalid_non_ascii() {
+        let x = ScopeToken::new("https://crates.io/scopes/¿publish:crate");
+        assert!(matches!(x, Err(InvalidScopeToken::InvalidCharacter { .. })));
+    }
+
+    #[test]
+    fn owned_rejects_invalid_emoji() {
+        let x = ScopeToken::new("https://crates.io/scopes/🪤publish:crate");
         assert!(matches!(x, Err(InvalidScopeToken::InvalidCharacter { .. })));
     }
 
@@ -79,8 +109,38 @@ mod tests {
     }
 
     #[test]
-    fn ref_rejects_invalid() {
+    fn ref_rejects_invalid_quote() {
         let x = ScopeTokenRef::from_str("https://crates.io/scopes/\"publish:crate\"");
+        assert!(matches!(x, Err(InvalidScopeToken::InvalidCharacter { .. })));
+    }
+
+    #[test]
+    fn ref_rejects_invalid_control() {
+        let x = ScopeTokenRef::from_str("https://crates.io/scopes/\tpublish:crate");
+        assert!(matches!(x, Err(InvalidScopeToken::InvalidCharacter { .. })));
+    }
+
+    #[test]
+    fn ref_rejects_invalid_backslash() {
+        let x = ScopeTokenRef::from_str("https://crates.io/scopes/\\publish:crate");
+        assert!(matches!(x, Err(InvalidScopeToken::InvalidCharacter { .. })));
+    }
+
+    #[test]
+    fn ref_rejects_invalid_delete() {
+        let x = ScopeTokenRef::from_str("https://crates.io/scopes/\x7Fpublish:crate");
+        assert!(matches!(x, Err(InvalidScopeToken::InvalidCharacter { .. })));
+    }
+
+    #[test]
+    fn ref_rejects_invalid_non_ascii() {
+        let x = ScopeTokenRef::from_str("https://crates.io/scopes/¿publish:crate");
+        assert!(matches!(x, Err(InvalidScopeToken::InvalidCharacter { .. })));
+    }
+
+    #[test]
+    fn ref_rejects_invalid_emoji() {
+        let x = ScopeTokenRef::from_str("https://crates.io/scopes/🪤publish:crate");
         assert!(matches!(x, Err(InvalidScopeToken::InvalidCharacter { .. })));
     }
 }
