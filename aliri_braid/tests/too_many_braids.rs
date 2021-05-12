@@ -75,15 +75,27 @@ macro_rules! too_many_braids {
             use aliri_braid::braid;
 
             /// A basic example of a wrapper around a [`String`]
-            #[braid(serde, ref_doc = "A borrowed reference to a basic string slice wrapper")]
+            #[braid(
+                serde,
+                ref_doc = "A borrowed reference to a basic string slice wrapper"
+            )]
             pub struct BasicExampleBuf;
 
             /// A non-empty [`String`] normalized to lowercase
-            #[braid(serde, normalizer = "super::LowerString", ref = "LowerStr", ref_doc = "A borrowed reference to a non-empty, lowercase string")]
+            #[braid(
+                serde,
+                normalizer = "super::LowerString",
+                ref = "LowerStr",
+                ref_doc = "A borrowed reference to a non-empty, lowercase string"
+            )]
             pub struct LowerString;
 
             /// A scope token as defined in RFC6749, Section 3.3
-            #[braid(serde, validator = "super::ScopeToken", ref_doc = "A borrowed reference to a [`ScopeToken`]")]
+            #[braid(
+                serde,
+                validator = "super::ScopeToken",
+                ref_doc = "A borrowed reference to a [`ScopeToken`]"
+            )]
             pub struct ScopeToken;
         }
     };
