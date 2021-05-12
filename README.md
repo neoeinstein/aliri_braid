@@ -1,5 +1,7 @@
 # aliri_braid
 
+[![Build Status](https://github.com/neoeinstein/aliri_braid/actions/workflows/rust.yml/badge.svg?branch=main&event=push)](https://github.com/neoeinstein/aliri_braid)
+
 Improve and strengthen your strings
 
 Strongly-typed APIs reduce errors and confusion over passing around un-typed strings.
@@ -376,6 +378,7 @@ For the `Owned` type
 * [`std::convert::AsRef<str>`]
 * [`std::convert::From<&Borrowed>`]
 * [`std::borrow::Borrow<Borrowed>`]
+* [`std::str::FromStr`]
 * [`std::ops::Deref`] where `Target = Borrowed`
 
 Additionally, unvalidated owned types implement
