@@ -488,6 +488,7 @@ pub fn serde_impls(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use pretty_assertions::assert_eq;
     use quote::format_ident;
     use syn::parse_quote;
 
@@ -520,6 +521,7 @@ mod tests {
                 }
             }
 
+            #[allow(clippy::needless_question_mark)]
             impl<'de> ::serde::Deserialize<'de> for Owned {
                 fn deserialize<D: ::serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
                     let raw = <Wrapped as ::serde::Deserialize<'de>>::deserialize(deserializer)?;
@@ -544,6 +546,7 @@ mod tests {
                 }
             }
 
+            #[allow(clippy::needless_question_mark)]
             impl<'de> ::serde::Deserialize<'de> for Owned {
                 fn deserialize<D: ::serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
                     let raw = <Wrapped as ::serde::Deserialize<'de>>::deserialize(deserializer)?;
