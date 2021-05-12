@@ -1,3 +1,22 @@
+//! You probably want the [`aliri_braid`] crate, which
+//! has the documentation this crate lacks.
+//!
+//!   [`aliri_braid`]: https://docs.rs/aliri_braid/*/aliri_braid/
+
+#![warn(
+    missing_docs,
+    unused_import_braces,
+    unused_imports,
+    unused_qualifications
+)]
+#![deny(
+    missing_debug_implementations,
+    trivial_casts,
+    trivial_numeric_casts,
+    unused_must_use
+)]
+#![forbid(unsafe_code)]
+
 extern crate proc_macro;
 
 mod borrow;
@@ -10,6 +29,18 @@ use symbol::*;
 use proc_macro::TokenStream;
 use syn::parse_macro_input;
 
+/// Constructs a braid
+///
+/// Available options:
+/// * `ref = "RefName"`
+///   * Sets the name of the borrowed type
+/// * `ref_doc = "Alternate doc comment"`
+///   * Overrides the default doc comment for the borrowed type
+/// * either `validator [ = "Type" ]` or `normalizer [ = "Type" ]`
+///   * Indicates the type is validated or normalized. If not specified,
+///     it is assumed that the braid implements the relevant trait itself.
+/// * `serde`
+///   * Adds serialize and deserialize implementations
 #[proc_macro_attribute]
 pub fn braid(args: TokenStream, input: TokenStream) -> TokenStream {
     let args = parse_macro_input!(args as syn::AttributeArgs);
@@ -21,6 +52,7 @@ pub fn braid(args: TokenStream, input: TokenStream) -> TokenStream {
 }
 
 #[proc_macro_attribute]
+#[doc(hidden)]
 pub fn braid_ref(args: TokenStream, input: TokenStream) -> TokenStream {
     let args = parse_macro_input!(args as syn::AttributeArgs);
     let body = parse_macro_input!(input as syn::ItemStruct);
@@ -28,6 +60,14 @@ pub fn braid_ref(args: TokenStream, input: TokenStream) -> TokenStream {
     borrow::typed_string_ref_tokens(args, body)
         .unwrap_or_else(|e| e.into_compile_error())
         .into()
+}
+
+fn as_validator(validator: &syn::Type) -> proc_macro2::TokenStream {
+    quote::quote! { <#validator as ::aliri_braid::Validator> }
+}
+
+fn as_normalizer(normalizer: &syn::Type) -> proc_macro2::TokenStream {
+    quote::quote! { <#normalizer as ::aliri_braid::Normalizer> }
 }
 
 fn get_lit_str(attr_name: Symbol, lit: &syn::Lit) -> Result<&syn::LitStr, syn::Error> {

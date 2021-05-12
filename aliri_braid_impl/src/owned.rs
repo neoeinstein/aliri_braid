@@ -134,10 +134,12 @@ fn fallible_owned_creation(ident: &syn::Ident, validator: &syn::Type) -> proc_ma
         ident, validator_tokens
     );
 
+    let validator = super::as_validator(validator);
+
     quote! {
         #[doc = #doc_comment]
-        pub fn new<S: Into<String> + AsRef<str>>(s: S) -> Result<Self, <#validator as ::aliri_braid::Validator>::Error> {
-            <#validator as ::aliri_braid::Validator>::validate(s.as_ref())?;
+        pub fn new<S: Into<String> + AsRef<str>>(s: S) -> Result<Self, #validator::Error> {
+            #validator::validate(s.as_ref())?;
             Ok(Self(s.into()))
         }
 
@@ -154,7 +156,7 @@ fn normalized_owned_creation(
 ) -> proc_macro2::TokenStream {
     let normalizer_tokens = normalizer.to_token_stream();
     let doc_comment = format!(
-        "Constructs a new {} if it conforms to [`{}`] and performing normalization",
+        "Constructs a new {} if it conforms to [`{}`] and normalizes the input",
         ident, normalizer_tokens
     );
 
@@ -169,10 +171,12 @@ fn normalized_owned_creation(
         ident, normalizer_tokens
     );
 
+    let normalizer = super::as_normalizer(normalizer);
+
     quote! {
         #[doc = #doc_comment]
-        pub fn new<S: AsRef<str>>(s: S) -> Result<Self, <#normalizer as ::aliri_braid::Normalizer>::Error> {
-            let result = <#normalizer as ::aliri_braid::Normalizer>::normalize(s.as_ref())?;
+        pub fn new<S: AsRef<str>>(s: S) -> Result<Self, #normalizer::Error> {
+            let result = #normalizer::normalize(s.as_ref())?;
             Ok(Self(result.into_owned()))
         }
 
@@ -257,10 +261,7 @@ fn construct_ref_item(
     )
 }
 
-pub fn common_impls(
-    name: &syn::Ident,
-    ref_type: &syn::Type,
-) -> proc_macro2::TokenStream {
+pub fn common_impls(name: &syn::Ident, ref_type: &syn::Type) -> proc_macro2::TokenStream {
     quote! {
         impl From<&'_ #ref_type> for #name {
             #[inline]
@@ -345,9 +346,11 @@ fn fallible_conversion_impls(
     wrapped_type: &syn::Type,
     validator: &syn::Type,
 ) -> proc_macro2::TokenStream {
+    let validator = super::as_validator(validator);
+
     quote! {
         impl ::std::convert::TryFrom<#wrapped_type> for #name {
-            type Error = <#validator as ::aliri_braid::Validator>::Error;
+            type Error = #validator::Error;
 
             #[inline]
             fn try_from(s: #wrapped_type) -> Result<Self, Self::Error> {
@@ -356,7 +359,7 @@ fn fallible_conversion_impls(
         }
 
         impl ::std::convert::TryFrom<&'_ str> for #name {
-            type Error = <#validator as ::aliri_braid::Validator>::Error;
+            type Error = #validator::Error;
 
             #[inline]
             fn try_from(s: &str) -> Result<Self, Self::Error> {
@@ -365,7 +368,7 @@ fn fallible_conversion_impls(
         }
 
         impl ::std::str::FromStr for #name {
-            type Err = <#validator as ::aliri_braid::Validator>::Error;
+            type Err = #validator::Error;
 
             #[inline]
             fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -393,9 +396,11 @@ fn normalized_conversion_impls(
     wrapped_type: &syn::Type,
     normalizer: &syn::Type,
 ) -> proc_macro2::TokenStream {
+    let normalizer = super::as_normalizer(normalizer);
+
     quote! {
         impl ::std::convert::TryFrom<#wrapped_type> for #name {
-            type Error = <#normalizer as ::aliri_braid::Normalizer>::Error;
+            type Error = #normalizer::Error;
 
             #[inline]
             fn try_from(s: #wrapped_type) -> Result<Self, Self::Error> {
@@ -404,7 +409,7 @@ fn normalized_conversion_impls(
         }
 
         impl ::std::convert::TryFrom<&'_ str> for #name {
-            type Error = <#normalizer as ::aliri_braid::Normalizer>::Error;
+            type Error = #normalizer::Error;
 
             #[inline]
             fn try_from(s: &str) -> Result<Self, Self::Error> {
@@ -413,7 +418,7 @@ fn normalized_conversion_impls(
         }
 
         impl ::std::str::FromStr for #name {
-            type Err = <#normalizer as ::aliri_braid::Normalizer>::Error;
+            type Err = #normalizer::Error;
 
             #[inline]
             fn from_str(s: &str) -> Result<Self, Self::Err> {

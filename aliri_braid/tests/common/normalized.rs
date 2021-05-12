@@ -210,7 +210,8 @@ fn verify_serialization_fail_borrow_valid_but_non_normal() {
 }
 
 #[test]
-fn verify_serialization_pass_boxed_valid_but_non_normal() -> Result<(), Box<dyn std::error::Error>> {
+fn verify_serialization_pass_boxed_valid_but_non_normal() -> Result<(), Box<dyn std::error::Error>>
+{
     const SERIALIZATION: &str = "\"Test ;\"";
     let expected = &*Normalized::from_str("Test;")?;
     let actual: Box<Normalized> = serde_json::from_str(&SERIALIZATION)?;
@@ -219,7 +220,8 @@ fn verify_serialization_pass_boxed_valid_but_non_normal() -> Result<(), Box<dyn 
 }
 
 #[test]
-fn verify_serialization_pass_owned_valid_but_non_normal() -> Result<(), Box<dyn std::error::Error>> {
+fn verify_serialization_pass_owned_valid_but_non_normal() -> Result<(), Box<dyn std::error::Error>>
+{
     const SERIALIZATION: &str = "\"Test ;\"";
     let expected = &*Normalized::from_str("Test;")?;
     let actual: NormalizedBuf = serde_json::from_str(&SERIALIZATION)?;

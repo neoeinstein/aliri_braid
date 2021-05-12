@@ -585,7 +585,7 @@
 
 use std::{borrow::Cow, error, fmt};
 
-/// A validator that can verify a given is valid given certain preconditions
+/// A validator that can verify a given input is valid given certain preconditions
 pub trait Validator {
     /// The error produced when the string is invalid
     type Error: error::Error + Send + Sync + 'static;
@@ -594,12 +594,13 @@ pub trait Validator {
     fn validate(s: &str) -> Result<(), Self::Error>;
 }
 
-/// A validator that can verify a given is valid given certain preconditions
+/// A normalizer that can verify a given input is valid
+/// and performs necessary normalization
 pub trait Normalizer {
     /// The error produced when the string is invalid
     type Error: error::Error + Send + Sync + 'static;
 
-    /// Validates a string according to a predetermined set of rules
+    /// Validates and normalizes the borrowed input
     fn normalize(s: &str) -> Result<Cow<str>, Self::Error>;
 }
 

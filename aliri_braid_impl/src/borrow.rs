@@ -184,12 +184,14 @@ fn fallible_ref_creation(
         }
     });
 
+    let validator = super::as_validator(validator);
+
     let creation_functions = quote! {
         #[allow(unsafe_code)]
         #[inline]
         #[doc = #doc_comment]
-        pub fn from_str(raw: &str) -> Result<&Self, <#validator as ::aliri_braid::Validator>::Error> {
-            <#validator as ::aliri_braid::Validator>::validate(raw)?;
+        pub fn from_str(raw: &str) -> Result<&Self, #validator::Error> {
+            #validator::validate(raw)?;
             // SAFETY: The value was just checked and found to already conform
             // to the required implicit contracts of the normalizer.
             Ok(unsafe { Self::from_str_unchecked(raw) })
@@ -281,12 +283,15 @@ fn normalized_ref_creation(
         }
     });
 
+    let validator = super::as_validator(normalizer);
+    let normalizer = super::as_normalizer(normalizer);
+
     let creation_functions = quote! {
         #[allow(unsafe_code)]
         #[inline]
         #[doc = #doc_comment]
-        pub fn from_str(raw: &str) -> Result<::std::borrow::Cow<Self>, <#normalizer as ::aliri_braid::Normalizer>::Error> {
-            let cow = <#normalizer as ::aliri_braid::Normalizer>::normalize(raw)?;
+        pub fn from_str(raw: &str) -> Result<::std::borrow::Cow<Self>, #normalizer::Error> {
+            let cow = #normalizer::normalize(raw)?;
             // SAFETY: The value was just checked and found to already conform
             // to the required implicit contracts of the normalizer.
             Ok(unsafe { Self::from_cow_str_unchecked(cow) })
@@ -311,8 +316,8 @@ fn normalized_ref_creation(
         #[allow(unsafe_code)]
         #[inline]
         #[doc = #doc_comment_norm]
-        pub fn from_normalized_str(raw: &str) -> Result<&Self, <#normalizer as ::aliri_braid::Validator>::Error> {
-            <#normalizer as ::aliri_braid::Validator>::validate(raw)?;
+        pub fn from_normalized_str(raw: &str) -> Result<&Self, #validator::Error> {
+            #validator::validate(raw)?;
             // SAFETY: The value was just checked and found to already conform
             // to the required implicit contracts of the normalizer.
             Ok(unsafe { Self::from_str_unchecked(raw) })
@@ -414,24 +419,30 @@ fn conversion_impls(name: &syn::Ident, check_mode: &CheckMode) -> proc_macro2::T
                 }
             }
         },
-        CheckMode::Validate(validator) => quote! {
-            impl<'a> std::convert::TryFrom<&'a str> for &'a #name {
-                type Error = <#validator as ::aliri_braid::Validator>::Error;
+        CheckMode::Validate(validator) => {
+            let validator = super::as_validator(validator);
+            quote! {
+                impl<'a> std::convert::TryFrom<&'a str> for &'a #name {
+                    type Error = #validator::Error;
 
-                fn try_from(s: &'a str) -> Result<&'a #name, Self::Error> {
-                    #name::from_str(s)
+                    fn try_from(s: &'a str) -> Result<&'a #name, Self::Error> {
+                        #name::from_str(s)
+                    }
                 }
             }
-        },
-        CheckMode::Normalize(normalizer) => quote! {
-            impl<'a> std::convert::TryFrom<&'a str> for &'a #name {
-                type Error = <#normalizer as ::aliri_braid::Validator>::Error;
+        }
+        CheckMode::Normalize(normalizer) => {
+            let validator = super::as_validator(normalizer);
+            quote! {
+                impl<'a> std::convert::TryFrom<&'a str> for &'a #name {
+                    type Error = #validator::Error;
 
-                fn try_from(s: &'a str) -> Result<&'a #name, Self::Error> {
-                    #name::from_normalized_str(s)
+                    fn try_from(s: &'a str) -> Result<&'a #name, Self::Error> {
+                        #name::from_normalized_str(s)
+                    }
                 }
             }
-        },
+        }
     }
 }
 
