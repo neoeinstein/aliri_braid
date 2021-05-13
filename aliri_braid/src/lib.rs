@@ -452,8 +452,9 @@
 //! * [`std::cmp::PartialEq<&Borrowed>`]
 //! * [`std::cmp::PartialEq<Box<Borrowed>>`]
 //! * [`std::convert::AsRef<Borrowed>`]
-//! * [`std::convert::AsRef<str>`]
 //! * [`std::convert::From<&Borrowed>`]
+//! * [`std::convert::From<Box<Borrowed>>`]
+//! * [`std::convert::From<Cow<Borrowed>>`]
 //! * [`std::borrow::Borrow<Borrowed>`]
 //! * [`std::str::FromStr`]
 //! * [`std::ops::Deref`] where `Target = Borrowed`
@@ -478,13 +479,18 @@
 //! * [`std::cmp::PartialEq<&Borrowed>`]
 //! * [`std::cmp::PartialEq<Box<Borrowed>>`]
 //! * [`std::borrow::ToOwned`] where `Owned = Owned`
-//! * [`std::convert::AsRef<str>`]
 //!
 //! Additionally, unvalidated borrowed types implement
 //! * [`std::convert::From<&str>`]
 //!
 //! Validated and normalize borrowed types will instead implement
 //! * [`std::convert::TryFrom<&str>`]
+//!
+//! For `Cow<Borrowed>`
+//! * [`std::convert::From<&Borrowed>`]
+//!
+//! For `Box<Borrowed>`
+//! * [`std::convert::From<Owned>`]
 //!
 //! The above conversion will fail if the value is not already normalized.
 //!

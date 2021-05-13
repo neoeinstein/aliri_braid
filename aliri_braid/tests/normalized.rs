@@ -72,6 +72,35 @@ mod tests {
         assert_eq!(x.as_str(), "testing");
     }
 
+    fn needs_ref(_: &LowerStr) {}
+    fn needs_owned(_: LowerString) {}
+
+    #[test]
+    fn ref_as_ref_already_normal() {
+        let cow = LowerStr::from_str("testing").unwrap();
+        let borrowed = cow.as_ref();
+        needs_ref(borrowed);
+    }
+
+    #[test]
+    fn ref_as_ref_valid_non_normal() {
+        let cow = LowerStr::from_str("TestIng").unwrap();
+        let borrowed = cow.as_ref();
+        needs_ref(borrowed);
+    }
+
+    #[test]
+    fn ref_to_owned_already_normal() {
+        let owned = LowerStr::from_str("testing").unwrap().into_owned();
+        needs_owned(owned);
+    }
+
+    #[test]
+    fn ref_to_owned_valid_non_normal() {
+        let owned = LowerStr::from_str("TestIng").unwrap().into_owned();
+        needs_owned(owned);
+    }
+
     #[test]
     fn ref_rejects_invalid() {
         let x = LowerStr::from_str("");

@@ -411,7 +411,7 @@ fn comparison_impls(name: &syn::Ident, owned_type: &syn::Type) -> proc_macro2::T
 }
 
 fn conversion_impls(name: &syn::Ident, check_mode: &CheckMode) -> proc_macro2::TokenStream {
-    match check_mode {
+    let from_str = match check_mode {
         CheckMode::None => quote! {
             impl<'a> From<&'a str> for &'a #name {
                 fn from(s: &'a str) -> &'a #name {
@@ -443,18 +443,21 @@ fn conversion_impls(name: &syn::Ident, check_mode: &CheckMode) -> proc_macro2::T
                 }
             }
         }
+    };
+
+    quote! {
+        #from_str
+
+        impl<'a> From<&'a #name> for ::std::borrow::Cow<'a, #name> {
+            fn from(r: &'a #name) -> Self {
+                ::std::borrow::Cow::Borrowed(r)
+            }
+        }
     }
 }
 
 fn common_impls(name: &syn::Ident) -> proc_macro2::TokenStream {
     quote! {
-        impl AsRef<str> for #name {
-            #[inline]
-            fn as_ref(&self) -> &str {
-                self.as_str()
-            }
-        }
-
         impl ::std::fmt::Display for #name {
             #[inline]
             fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {

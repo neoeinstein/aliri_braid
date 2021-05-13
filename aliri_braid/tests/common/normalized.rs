@@ -367,3 +367,5 @@ fn check_owned_size_val() {
     dbg!(std::mem::size_of_val(&y));
     assert_eq_size_val!(s, y);
 }
+
+assert_core_impls!(NormalizedBuf => Normalized where NormalizationError = crate::InvalidData);

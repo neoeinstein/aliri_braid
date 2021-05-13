@@ -277,13 +277,6 @@ pub fn common_impls(name: &syn::Ident, ref_type: &syn::Type) -> proc_macro2::Tok
             }
         }
 
-        impl AsRef<str> for #name {
-            #[inline]
-            fn as_ref(&self) -> &str {
-                self.as_str()
-            }
-        }
-
         impl AsRef<#ref_type> for #name {
             #[inline]
             fn as_ref(&self) -> &#ref_type {
@@ -446,13 +439,38 @@ fn conversion_impls(
     wrapped_type: &syn::Type,
     check_mode: &CheckMode,
 ) -> proc_macro2::TokenStream {
-    match check_mode {
+    let impls = match check_mode {
         CheckMode::None => infallible_conversion_impls(name, ref_type, wrapped_type),
         CheckMode::Validate(validator) => {
             fallible_conversion_impls(name, ref_type, wrapped_type, validator)
         }
         CheckMode::Normalize(normalizer) => {
             normalized_conversion_impls(name, ref_type, wrapped_type, normalizer)
+        }
+    };
+
+    quote! {
+        #impls
+
+        impl From<#name> for Box<#ref_type> {
+            fn from(r: #name) -> Self {
+                r.into_boxed_ref()
+            }
+        }
+
+        impl From<Box<#ref_type>> for #name {
+            fn from(r: Box<#ref_type>) -> Self {
+                r.into_owned()
+            }
+        }
+
+        impl<'a> From<::std::borrow::Cow<'a, #ref_type>> for #name {
+            fn from(r: ::std::borrow::Cow<'a, #ref_type>) -> Self {
+                match r {
+                    ::std::borrow::Cow::Borrowed(b) => b.to_owned(),
+                    ::std::borrow::Cow::Owned(o) => o,
+                }
+            }
         }
     }
 }
