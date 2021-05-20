@@ -44,10 +44,14 @@ impl std::convert::TryFrom<syn::AttributeArgs> for Parameters {
                     params.ref_doc = Some(parse_lit_into_string(REF_DOC, &nv.lit)?);
                 }
                 syn::NestedMeta::Meta(syn::Meta::NameValue(nv)) if nv.path == DEBUG_IMPL => {
-                    params.impl_debug = parse_lit_into_string(REF_DOC, &nv.lit)?.parse::<AutoImplOption>().map_err(|e| syn::Error::new_spanned(&arg, e.to_owned()))?;
+                    params.impl_debug = parse_lit_into_string(REF_DOC, &nv.lit)?
+                        .parse::<AutoImplOption>()
+                        .map_err(|e| syn::Error::new_spanned(&arg, e.to_owned()))?;
                 }
                 syn::NestedMeta::Meta(syn::Meta::NameValue(nv)) if nv.path == DISPLAY_IMPL => {
-                    params.impl_display = parse_lit_into_string(REF_DOC, &nv.lit)?.parse::<AutoImplOption>().map_err(|e| syn::Error::new_spanned(&arg, e.to_owned()))?;
+                    params.impl_display = parse_lit_into_string(REF_DOC, &nv.lit)?
+                        .parse::<AutoImplOption>()
+                        .map_err(|e| syn::Error::new_spanned(&arg, e.to_owned()))?;
                 }
                 syn::NestedMeta::Meta(syn::Meta::Path(p)) if p == SERDE => {
                     params.derive_serde = true;
@@ -117,7 +121,7 @@ impl std::str::FromStr for AutoImplOption {
             "auto" => Ok(Self::Auto),
             "owned" => Ok(Self::OwnedOnly),
             "none" => Ok(Self::None),
-            _ => Err("valid values are: `auto`, `owned`, or `none`")
+            _ => Err("valid values are: `auto`, `owned`, or `none`"),
         }
     }
 }

@@ -126,7 +126,7 @@ impl fmt::Debug for SecretRef {
                     Some((idx, c)) if idx + c.len_utf8() < self.0.len() => {
                         f.write_str(&self.0[0..idx + c.len_utf8()])?;
                         f.write_str("…")?;
-                    },
+                    }
                     _ => {
                         f.write_str(&self.0)?;
                     }

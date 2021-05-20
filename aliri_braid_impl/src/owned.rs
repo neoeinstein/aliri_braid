@@ -54,8 +54,10 @@ pub fn typed_string_params(
         .transpose()?;
 
     let clone = (!omit_clone).then(|| quote! { Clone, });
-    let debug_impl = (impl_debug != parameters::AutoImplOption::None).then(|| debug_impl(name, &ref_type));
-    let display_impl = (impl_debug != parameters::AutoImplOption::None).then(|| display_impl(name, &ref_type));
+    let debug_impl =
+        (impl_debug != parameters::AutoImplOption::None).then(|| debug_impl(name, &ref_type));
+    let display_impl =
+        (impl_debug != parameters::AutoImplOption::None).then(|| display_impl(name, &ref_type));
 
     let output = quote! {
         #[derive(#clone Hash, PartialEq, Eq)]
