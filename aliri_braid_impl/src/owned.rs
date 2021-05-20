@@ -44,10 +44,13 @@ pub fn typed_string_params(
                 name,
                 &body.vis,
                 &ref_type,
-                check_mode,
-                impl_debug != parameters::AutoImplOption::Auto,
-                impl_display != parameters::AutoImplOption::Auto,
-                derive_serde,
+                crate::borrow::Parameters {
+                    owned_type: Some(syn::parse_quote!(#name)),
+                    check_mode,
+                    omit_debug: impl_debug != parameters::AutoImplOption::Auto,
+                    omit_display: impl_display != parameters::AutoImplOption::Auto,
+                    derive_serde,
+                },
                 ref_doc,
             )
         })
@@ -253,10 +256,7 @@ fn construct_ref_item(
     name: &syn::Ident,
     vis: &syn::Visibility,
     ref_type: &syn::Type,
-    check_mode: CheckMode,
-    omit_debug: bool,
-    omit_display: bool,
-    derive_serde: bool,
+    params: crate::borrow::Parameters,
     ref_doc: Option<String>,
 ) -> Result<proc_macro2::TokenStream, syn::Error> {
     let ref_vis = vis.clone();
@@ -264,13 +264,7 @@ fn construct_ref_item(
     let ref_doc = ref_doc.unwrap_or_else(|| format!("A reference to a borrowed [`{}`]", name));
 
     crate::borrow::typed_string_ref_params(
-        crate::borrow::Parameters {
-            owned_type: Some(syn::parse_quote!(#name)),
-            check_mode,
-            omit_debug,
-            omit_display,
-            derive_serde,
-        },
+        params,
         syn::parse_quote! {
                 #[doc = #ref_doc]
                 #ref_vis struct #ref_type(str);
