@@ -72,8 +72,8 @@ fn debug_and_display_tests() -> Result<(), Box<dyn std::error::Error>> {
 
     assert_eq!("One", x.to_string());
     assert_eq!("One", y.to_string());
-    assert_eq!("ValidatedBuf(\"One\")", format!("{:?}", x));
-    assert_eq!("Validated(\"One\")", format!("{:?}", y));
+    assert_eq!("\"One\"", format!("{:?}", x));
+    assert_eq!("\"One\"", format!("{:?}", y));
 
     Ok(())
 }
