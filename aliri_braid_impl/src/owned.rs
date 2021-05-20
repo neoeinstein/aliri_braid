@@ -18,6 +18,9 @@ pub fn typed_string_params(
 ) -> Result<proc_macro2::TokenStream, syn::Error> {
     let Parameters {
         ref_type,
+        omit_clone,
+        impl_debug,
+        impl_display,
         derive_serde,
         no_auto_ref,
         ref_doc,
@@ -42,19 +45,27 @@ pub fn typed_string_params(
                 &body.vis,
                 &ref_type,
                 check_mode,
+                impl_debug != parameters::AutoImplOption::Auto,
+                impl_display != parameters::AutoImplOption::Auto,
                 derive_serde,
                 ref_doc,
             )
         })
         .transpose()?;
 
+    let clone = (!omit_clone).then(|| quote! { Clone, });
+    let debug_impl = (impl_debug != parameters::AutoImplOption::None).then(|| debug_impl(name, &ref_type));
+    let display_impl = (impl_debug != parameters::AutoImplOption::None).then(|| display_impl(name, &ref_type));
+
     let output = quote! {
-        #[derive(Clone, Debug, Hash, PartialEq, Eq)]
+        #[derive(#clone Hash, PartialEq, Eq)]
         #[repr(transparent)]
         #body
 
         #inherent_impls
         #common_impls
+        #debug_impl
+        #display_impl
         #conversion_impls
         #serde_impls
 
@@ -241,6 +252,8 @@ fn construct_ref_item(
     vis: &syn::Visibility,
     ref_type: &syn::Type,
     check_mode: CheckMode,
+    omit_debug: bool,
+    omit_display: bool,
     derive_serde: bool,
     ref_doc: Option<String>,
 ) -> Result<proc_macro2::TokenStream, syn::Error> {
@@ -252,6 +265,8 @@ fn construct_ref_item(
         crate::borrow::Parameters {
             owned_type: Some(syn::parse_quote!(#name)),
             check_mode,
+            omit_debug,
+            omit_display,
             derive_serde,
         },
         syn::parse_quote! {
@@ -259,6 +274,28 @@ fn construct_ref_item(
                 #ref_vis struct #ref_type(str);
         },
     )
+}
+
+pub fn display_impl(name: &syn::Ident, ref_type: &syn::Type) -> proc_macro2::TokenStream {
+    quote! {
+        impl<'a> ::std::fmt::Display for #name {
+            #[inline]
+            fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+                <#ref_type as ::std::fmt::Display>::fmt(::std::borrow::Borrow::borrow(self), f)
+            }
+        }
+    }
+}
+
+pub fn debug_impl(name: &syn::Ident, ref_type: &syn::Type) -> proc_macro2::TokenStream {
+    quote! {
+        impl<'a> ::std::fmt::Debug for #name {
+            #[inline]
+            fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+                <#ref_type as ::std::fmt::Debug>::fmt(::std::borrow::Borrow::borrow(self), f)
+            }
+        }
+    }
 }
 
 pub fn common_impls(name: &syn::Ident, ref_type: &syn::Type) -> proc_macro2::TokenStream {
@@ -281,13 +318,6 @@ pub fn common_impls(name: &syn::Ident, ref_type: &syn::Type) -> proc_macro2::Tok
             #[inline]
             fn as_ref(&self) -> &#ref_type {
                 ::std::ops::Deref::deref(self)
-            }
-        }
-
-        impl<'a> ::std::fmt::Display for #name {
-            #[inline]
-            fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-                f.write_str(self.as_str())
             }
         }
     }

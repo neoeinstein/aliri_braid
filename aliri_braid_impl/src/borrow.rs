@@ -19,6 +19,8 @@ pub fn typed_string_ref_params(
     let Parameters {
         owned_type,
         check_mode,
+        omit_debug,
+        omit_display,
         derive_serde,
     } = params;
 
@@ -29,18 +31,20 @@ pub fn typed_string_ref_params(
         .as_ref()
         .map(|owned_type| comparison_impls(&body.ident, owned_type));
     let conversion_impls = conversion_impls(&body.ident, &check_mode);
-    let common_impls = common_impls(&body.ident);
+    let display_impl = (!omit_display).then(|| display_impl(&body.ident));
+    let debug_impl = (!omit_debug).then(|| debug_impl(&body.ident));
     let serde_impls = derive_serde.then(|| serde_impls(&body.ident, &owned_type, &check_mode));
 
     let output = quote! {
-        #[derive(Debug, Hash, PartialEq, Eq)]
+        #[derive(Hash, PartialEq, Eq)]
         #[repr(transparent)]
         #body
 
         #inherent_impl
         #comparison_impls
         #conversion_impls
-        #common_impls
+        #debug_impl
+        #display_impl
         #serde_impls
     };
 
@@ -456,12 +460,23 @@ fn conversion_impls(name: &syn::Ident, check_mode: &CheckMode) -> proc_macro2::T
     }
 }
 
-fn common_impls(name: &syn::Ident) -> proc_macro2::TokenStream {
+fn display_impl(name: &syn::Ident) -> proc_macro2::TokenStream {
     quote! {
         impl ::std::fmt::Display for #name {
             #[inline]
             fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-                f.write_str(&self.0)
+                <str as ::std::fmt::Display>::fmt(&self.0, f)
+            }
+        }
+    }
+}
+
+fn debug_impl(name: &syn::Ident) -> proc_macro2::TokenStream {
+    quote! {
+        impl ::std::fmt::Debug for #name {
+            #[inline]
+            fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+                <str as ::std::fmt::Debug>::fmt(&self.0, f)
             }
         }
     }

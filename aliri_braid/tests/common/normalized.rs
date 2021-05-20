@@ -94,9 +94,9 @@ fn debug_and_display_tests() -> Result<(), Box<dyn std::error::Error>> {
     assert_eq!("OneTwo", x.to_string());
     assert_eq!("OneTwo", y.to_string());
     assert_eq!("OneTwo", z.to_string());
-    assert_eq!("NormalizedBuf(\"OneTwo\")", format!("{:?}", x));
-    assert_eq!("NormalizedBuf(\"OneTwo\")", format!("{:?}", y));
-    assert_eq!("Normalized(\"OneTwo\")", format!("{:?}", z));
+    assert_eq!("\"OneTwo\"", format!("{:?}", x));
+    assert_eq!("\"OneTwo\"", format!("{:?}", y));
+    assert_eq!("\"OneTwo\"", format!("{:?}", z));
 
     Ok(())
 }

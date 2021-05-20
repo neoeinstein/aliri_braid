@@ -32,8 +32,8 @@ pub fn debug_and_display_tests() {
 
     assert_eq!("One", x.to_string());
     assert_eq!("One", y.to_string());
-    assert_eq!("Orange(\"One\")", format!("{:?}", x));
-    assert_eq!("OrangeRef(\"One\")", format!("{:?}", y));
+    assert_eq!("\"One\"", format!("{:?}", x));
+    assert_eq!("\"One\"", format!("{:?}", y));
 }
 
 #[quickcheck]

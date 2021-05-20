@@ -7,6 +7,8 @@ use quote::ToTokens;
 pub struct Parameters {
     pub owned_type: Option<syn::Type>,
     pub check_mode: CheckMode,
+    pub omit_debug: bool,
+    pub omit_display: bool,
     pub derive_serde: bool,
 }
 
@@ -37,6 +39,12 @@ impl std::convert::TryFrom<syn::AttributeArgs> for Parameters {
                 }
                 syn::NestedMeta::Meta(syn::Meta::Path(p)) if p == SERDE => {
                     params.derive_serde = true;
+                }
+                syn::NestedMeta::Meta(syn::Meta::Path(p)) if p == OMIT_DEBUG => {
+                    params.omit_debug = true;
+                }
+                syn::NestedMeta::Meta(syn::Meta::Path(p)) if p == OMIT_DISPLAY => {
+                    params.omit_display = true;
                 }
                 syn::NestedMeta::Meta(syn::Meta::NameValue(syn::MetaNameValue {
                     ref path,

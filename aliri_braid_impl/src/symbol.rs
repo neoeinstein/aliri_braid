@@ -6,6 +6,11 @@ pub struct Symbol(&'static str);
 
 pub const NO_AUTO_REF: Symbol = Symbol("no_auto_ref");
 pub const OWNED: Symbol = Symbol("owned");
+pub const OMIT_CLONE: Symbol = Symbol("omit_clone");
+pub const OMIT_DEBUG: Symbol = Symbol("omit_debug");
+pub const OMIT_DISPLAY: Symbol = Symbol("omit_display");
+pub const DEBUG_IMPL: Symbol = Symbol("debug_impl");
+pub const DISPLAY_IMPL: Symbol = Symbol("display_impl");
 pub const REF: Symbol = Symbol("ref");
 pub const REF_DOC: Symbol = Symbol("ref_doc");
 pub const SERDE: Symbol = Symbol("serde");

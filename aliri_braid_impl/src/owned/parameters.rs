@@ -8,6 +8,9 @@ pub struct Parameters {
     pub ref_type: Option<syn::Type>,
     pub ref_doc: Option<String>,
     pub check_mode: IndefiniteCheckMode,
+    pub omit_clone: bool,
+    pub impl_debug: AutoImplOption,
+    pub impl_display: AutoImplOption,
     pub derive_serde: bool,
     pub no_auto_ref: bool,
 }
@@ -40,11 +43,20 @@ impl std::convert::TryFrom<syn::AttributeArgs> for Parameters {
                 syn::NestedMeta::Meta(syn::Meta::NameValue(nv)) if nv.path == REF_DOC => {
                     params.ref_doc = Some(parse_lit_into_string(REF_DOC, &nv.lit)?);
                 }
+                syn::NestedMeta::Meta(syn::Meta::NameValue(nv)) if nv.path == DEBUG_IMPL => {
+                    params.impl_debug = parse_lit_into_string(REF_DOC, &nv.lit)?.parse::<AutoImplOption>().map_err(|e| syn::Error::new_spanned(&arg, e.to_owned()))?;
+                }
+                syn::NestedMeta::Meta(syn::Meta::NameValue(nv)) if nv.path == DISPLAY_IMPL => {
+                    params.impl_display = parse_lit_into_string(REF_DOC, &nv.lit)?.parse::<AutoImplOption>().map_err(|e| syn::Error::new_spanned(&arg, e.to_owned()))?;
+                }
                 syn::NestedMeta::Meta(syn::Meta::Path(p)) if p == SERDE => {
                     params.derive_serde = true;
                 }
                 syn::NestedMeta::Meta(syn::Meta::Path(p)) if p == NO_AUTO_REF => {
                     params.no_auto_ref = true;
+                }
+                syn::NestedMeta::Meta(syn::Meta::Path(p)) if p == OMIT_CLONE => {
+                    params.omit_clone = true;
                 }
                 syn::NestedMeta::Meta(syn::Meta::Path(p)) if p == VALIDATOR => {
                     params
@@ -81,5 +93,31 @@ impl std::convert::TryFrom<syn::AttributeArgs> for Parameters {
         }
 
         Ok(params)
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum AutoImplOption {
+    Auto,
+    OwnedOnly,
+    None,
+}
+
+impl Default for AutoImplOption {
+    fn default() -> Self {
+        Self::Auto
+    }
+}
+
+impl std::str::FromStr for AutoImplOption {
+    type Err = &'static str;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "auto" => Ok(Self::Auto),
+            "owned" => Ok(Self::OwnedOnly),
+            "none" => Ok(Self::None),
+            _ => Err("valid values are: `auto`, `owned`, or `none`")
+        }
     }
 }

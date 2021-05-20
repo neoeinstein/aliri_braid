@@ -1,6 +1,6 @@
 #![deny(unsafe_code)]
 
-use std::borrow::Cow;
+use std::{borrow::Cow, fmt};
 
 use aliri_braid::braid;
 
@@ -68,3 +68,152 @@ impl aliri_braid::Normalizer for NormalizedBuf {
         }
     }
 }
+
+#[braid(omit_clone, debug_impl = "none", display_impl = "none")]
+pub struct CustomImpls;
+
+impl fmt::Debug for CustomImpls {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str("Owned Debug")
+    }
+}
+
+impl fmt::Display for CustomImpls {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str("Owned Display")
+    }
+}
+
+impl fmt::Debug for CustomImplsRef {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str("Borrowed Debug")
+    }
+}
+
+impl fmt::Display for CustomImplsRef {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str("Borrowed Display")
+    }
+}
+
+#[braid(debug_impl = "owned", display_impl = "owned")]
+pub struct DelegatedImpls;
+
+impl fmt::Debug for DelegatedImplsRef {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str("Borrowed Debug")
+    }
+}
+
+impl fmt::Display for DelegatedImplsRef {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str("Borrowed Display")
+    }
+}
+
+#[braid(debug_impl = "owned", display_impl = "owned")]
+pub struct Secret;
+
+impl fmt::Debug for SecretRef {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if f.alternate() {
+            f.write_str("\"")?;
+            let max_len = f.width().unwrap_or(10);
+            if max_len <= 1 {
+                f.write_str("…")?;
+            } else {
+                match self.0.char_indices().nth(max_len - 2) {
+                    Some((idx, c)) if idx + c.len_utf8() < self.0.len() => {
+                        f.write_str(&self.0[0..idx + c.len_utf8()])?;
+                        f.write_str("…")?;
+                    },
+                    _ => {
+                        f.write_str(&self.0)?;
+                    }
+                }
+            }
+            f.write_str("\"")
+        } else {
+            f.write_str("***SECRET***")
+        }
+    }
+}
+
+impl fmt::Display for SecretRef {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if f.alternate() {
+            f.write_str(&self.0)
+        } else {
+            f.write_str("***SECRET***")
+        }
+    }
+}
+
+mod tests {
+    use super::*;
+
+    static_assertions::assert_not_impl_any!(CustomImpls: Clone);
+
+    #[test]
+    fn check_custom_debug() {
+        let v = CustomImpls::new("");
+        let vref: &CustomImplsRef = &v;
+        assert_eq!("Owned Debug", format!("{:?}", v));
+        assert_eq!("Borrowed Debug", format!("{:?}", vref));
+    }
+
+    #[test]
+    fn check_custom_display() {
+        let v = CustomImpls::new("");
+        let vref: &CustomImplsRef = &v;
+        assert_eq!("Owned Display", format!("{}", v));
+        assert_eq!("Borrowed Display", format!("{}", vref));
+    }
+
+    static_assertions::assert_impl_any!(DelegatedImpls: Clone);
+
+    #[test]
+    fn check_delegated_debug() {
+        let v = DelegatedImpls::new("");
+        let vref: &DelegatedImplsRef = &v;
+        assert_eq!("Borrowed Debug", format!("{:?}", v));
+        assert_eq!("Borrowed Debug", format!("{:?}", vref));
+    }
+
+    #[test]
+    fn check_delegated_display() {
+        let v = DelegatedImpls::new("");
+        let vref: &DelegatedImplsRef = &v;
+        assert_eq!("Borrowed Display", format!("{}", v));
+        assert_eq!("Borrowed Display", format!("{}", vref));
+    }
+
+    static_assertions::assert_not_impl_any!(Secret: Clone);
+
+    #[test]
+    fn check_secret_debug() {
+        let v = Secret::new("my secret is bananas");
+        let vref: &SecretRef = &v;
+        assert_eq!("***SECRET***", format!("{:?}", v));
+        assert_eq!("\"my secret…\"", format!("{:#?}", v));
+        assert_eq!("\"…\"", format!("{:#1?}", v));
+        assert_eq!("\"my secret is…\"", format!("{:#13?}", v));
+        assert_eq!("\"my secret is banana…\"", format!("{:#20?}", v));
+        assert_eq!("\"my secret is bananas\"", format!("{:#21?}", v));
+        assert_eq!("***SECRET***", format!("{:?}", vref));
+        assert_eq!("\"my secret…\"", format!("{:#?}", vref));
+        assert_eq!("\"…\"", format!("{:#1?}", vref));
+        assert_eq!("\"my secret is…\"", format!("{:#13?}", vref));
+        assert_eq!("\"my secret is banana…\"", format!("{:#20?}", vref));
+        assert_eq!("\"my secret is bananas\"", format!("{:#21?}", vref));
+    }
+
+    #[test]
+    fn check_secret_display() {
+        let v = Secret::new("my secret is bananas");
+        let vref: &SecretRef = &v;
+        assert_eq!("***SECRET***", format!("{}", v));
+        assert_eq!("my secret is bananas", format!("{:#}", v));
+        assert_eq!("***SECRET***", format!("{}", vref));
+        assert_eq!("my secret is bananas", format!("{:#}", vref));
+    }}
