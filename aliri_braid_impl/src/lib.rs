@@ -39,6 +39,18 @@ use syn::parse_macro_input;
 /// * either `validator [ = "Type" ]` or `normalizer [ = "Type" ]`
 ///   * Indicates the type is validated or normalized. If not specified,
 ///     it is assumed that the braid implements the relevant trait itself.
+/// * `omit_clone`
+///   * Prevents the owned type from automatically deriving a `Clone` implementation
+/// * `debug_impl = "auto|owned|none"` (default `auto`)
+///   * Changes how automatic implementations of the `Debug` trait are provided.
+///     If `owned`, then the owned type will generate a `Debug` implementation that
+///     will just delegate to the borrowed implementation.
+///     If `none`, then no implementations of `Debug` will be provided.
+/// * `display_impl = "auto|owned|none"` (default `auto`)
+///   * Changes how automatic implementations of the `Display` trait are provided.
+///     If `owned`, then the owned type will generate a `Display` implementation that
+///     will just delegate to the borrowed implementation.
+///     If `none`, then no implementations of `Display` will be provided.
 /// * `serde`
 ///   * Adds serialize and deserialize implementations
 #[proc_macro_attribute]

@@ -421,6 +421,67 @@ The above conversion will fail if the value is not already normalized.
 required to treat a value as an untyped string, whether `.as_str()`, `.to_string()`, or
 `.into_string()`
 
+### Omitting `Clone`
+
+For some types, it may be desirable to prevent arbitrary cloning of a type. In that case,
+the `omit_clone` parameter can be used to prevent automatically deriving [`Clone`][std::clone::Clone].
+
+```rust
+#
+#[braid(omit_clone)]
+pub struct Sensitive;
+
+assert_not_impl_any!(Sensitive: Clone);
+```
+
+### Custom `Display` and `Debug`
+
+By default, the implementations of [`Display`][std::fmt::Display] and [`Debug`][std::fmt::Debug]
+provided by a braid delegate directly to the underlying [`String`] or [`str`] types. If a
+custom implementation is desired, the automatic derivation of these traits can be controlled
+by the `display_impl` and `debug_impl` parameters. Both of these parameters accept one of
+`auto`, `owned`, or `none`. By default, the `auto` derivation mode is used.
+
+The modes have the following effects:
+
+* `auto`: Format the owned and reference type transparently as the underlying string (slice) type.
+* `owned`: Automatically provide an owned implementation that transparently delegates to the
+  implementation of the borrowed form. The consumer must provide their custom implementation on
+  the borrowed form.
+* `none`: No implementations are provided for the owned or borrowed forms. These must be
+  implemented by the consumer if they are desired.
+
+As an example:
+
+```rust
+use std::fmt;
+#
+#[braid(omit_clone, display_impl = "owned", debug_impl = "owned")]
+pub struct Sensitive;
+
+impl fmt::Debug for SensitiveRef {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+         f.write_str("SENSITIVE")
+    }
+}
+
+impl fmt::Display for SensitiveRef {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+         f.write_str("SENSITIVE DISPLAY")
+    }
+}
+
+let owned = Sensitive::new("secret value");
+assert_eq!("SENSITIVE", format!("{:?}", owned));
+assert_eq!("SENSITIVE DISPLAY", format!("{}", owned));
+assert_eq!("secret value", owned.as_str());
+
+let borrowed: &SensitiveRef = &owned;
+assert_eq!("SENSITIVE", format!("{:?}", borrowed));
+assert_eq!("SENSITIVE DISPLAY", format!("{}", borrowed));
+assert_eq!("secret value", borrowed.as_str());
+```
+
 ## Serde
 
 [`Serialize`] and [`Deserialize`] implementations from the [`serde`] crate

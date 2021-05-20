@@ -152,7 +152,10 @@ impl fmt::Display for SecretRef {
 mod tests {
     use super::*;
 
-    static_assertions::assert_not_impl_any!(CustomImpls: Clone);
+    #[test]
+    fn check_custom_no_impl_clone() {
+        static_assertions::assert_not_impl_any!(CustomImpls: Clone);
+    }
 
     #[test]
     fn check_custom_debug() {
@@ -170,7 +173,10 @@ mod tests {
         assert_eq!("Borrowed Display", format!("{}", vref));
     }
 
-    static_assertions::assert_impl_any!(DelegatedImpls: Clone);
+    #[test]
+    fn check_delegated_impl_clone() {
+        static_assertions::assert_impl_all!(DelegatedImpls: Clone);
+    }
 
     #[test]
     fn check_delegated_debug() {
@@ -188,7 +194,10 @@ mod tests {
         assert_eq!("Borrowed Display", format!("{}", vref));
     }
 
-    static_assertions::assert_not_impl_any!(Secret: Clone);
+    #[test]
+    fn check_secret_impl_clone() {
+        static_assertions::assert_impl_all!(Secret: Clone);
+    }
 
     #[test]
     fn check_secret_debug() {
@@ -200,6 +209,7 @@ mod tests {
         assert_eq!("\"my secret is…\"", format!("{:#13?}", v));
         assert_eq!("\"my secret is banana…\"", format!("{:#20?}", v));
         assert_eq!("\"my secret is bananas\"", format!("{:#21?}", v));
+
         assert_eq!("***SECRET***", format!("{:?}", vref));
         assert_eq!("\"my secret…\"", format!("{:#?}", vref));
         assert_eq!("\"…\"", format!("{:#1?}", vref));
@@ -216,4 +226,5 @@ mod tests {
         assert_eq!("my secret is bananas", format!("{:#}", v));
         assert_eq!("***SECRET***", format!("{}", vref));
         assert_eq!("my secret is bananas", format!("{:#}", vref));
-    }}
+    }
+}
