@@ -13,7 +13,7 @@ repository = "https://github.com/neoeinstein/aliri_braid"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-aliri_braid_impl = { version = "0.1.4", path = "../aliri_braid_impl" }
+aliri_braid_impl = { version = "0.1.5", path = "../aliri_braid_impl" }
 
 [dev-dependencies]
 quickcheck = "1"
