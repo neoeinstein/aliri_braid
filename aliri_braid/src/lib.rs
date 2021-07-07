@@ -452,6 +452,7 @@
 //! * [`std::cmp::PartialEq<&Borrowed>`]
 //! * [`std::cmp::PartialEq<Box<Borrowed>>`]
 //! * [`std::convert::AsRef<Borrowed>`]
+//! * [`std::convert::AsRef<str>`]
 //! * [`std::convert::From<&Borrowed>`]
 //! * [`std::convert::From<Box<Borrowed>>`]
 //! * [`std::convert::From<Cow<Borrowed>>`]
@@ -478,6 +479,7 @@
 //! * [`std::cmp::PartialEq<Borrowed>`]
 //! * [`std::cmp::PartialEq<&Borrowed>`]
 //! * [`std::cmp::PartialEq<Box<Borrowed>>`]
+//! * [`std::convert::From<&Cow<Borrowed>>`]
 //! * [`std::borrow::ToOwned`] where `Owned = Owned`
 //!
 //! Additionally, unvalidated borrowed types implement
@@ -486,6 +488,9 @@
 //! Validated and normalize borrowed types will instead implement
 //! * [`std::convert::TryFrom<&str>`]
 //!
+//! For `Cow<'static, Borrowed>`
+//! * [`std::convert::From<Owned>`]
+//!
 //! For `Cow<Borrowed>`
 //! * [`std::convert::From<&Borrowed>`]
 //!
@@ -493,6 +498,13 @@
 //! * [`std::convert::From<Owned>`]
 //!
 //! The above conversion will fail if the value is not already normalized.
+//!
+//! Types that are not normalized will additionally implement
+//! * [`std::borrow::Borrow<str>`]
+//!
+//! `Borrow<str>` cannot be implemented for normalized braids because equality and hashing
+//! of equivalent braid values will have differing results for equality, which violates the
+//! contract implied by the `Borrow` trait.
 //!
 //! `Deref` to a `str` is explicitly not implemented. This means that an explicit call is
 //! required to treat a value as an untyped string, whether `.as_str()`, `.to_string()`, or

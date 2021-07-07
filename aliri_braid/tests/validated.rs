@@ -47,6 +47,7 @@ impl aliri_braid::Validator for ScopeToken {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::borrow::Borrow;
 
     #[test]
     fn owned_handles_valid() {
@@ -142,5 +143,62 @@ mod tests {
     fn ref_rejects_invalid_emoji() {
         let x = ScopeTokenRef::from_str("https://crates.io/scopes/🪤publish:crate");
         assert!(matches!(x, Err(InvalidScopeToken::InvalidCharacter { .. })));
+    }
+
+    #[allow(dead_code)]
+    struct Bar<'a> {
+        foo: std::borrow::Cow<'a, ScopeTokenRef>,
+    }
+
+    #[test]
+    fn owned_as_cow() {
+        let owned = ScopeToken::new("https://crates.io/scopes/publish:crate").unwrap();
+        let _bar = Bar {
+            foo: owned.into(),
+        };
+    }
+
+    #[test]
+    fn borrowed_as_cow() {
+        let borrowed = ScopeTokenRef::from_str("https://crates.io/scopes/publish:crate").unwrap();
+        let _bar = Bar {
+            foo: borrowed.into(),
+        };
+    }
+
+    #[test]
+    fn owned_as_ref_borrowed() {
+        let owned = ScopeToken::new("https://crates.io/scopes/publish:crate").unwrap();
+        let _reference: &ScopeTokenRef = owned.as_ref();
+    }
+
+    #[test]
+    fn owned_as_ref_str() {
+        let owned = ScopeToken::new("https://crates.io/scopes/publish:crate").unwrap();
+        let _reference: &str = owned.as_ref();
+    }
+
+    #[test]
+    fn borrowed_as_ref_str() {
+        let owned = ScopeTokenRef::from_str("https://crates.io/scopes/publish:crate").unwrap();
+        let _reference: &str = owned.as_ref();
+    }
+
+    #[test]
+    fn owned_borrow_borrowed() {
+        let owned = ScopeToken::new("https://crates.io/scopes/publish:crate").unwrap();
+        let _reference: &ScopeToken = owned.borrow();
+    }
+
+    #[test]
+    fn owned_borrow_str() {
+        let owned = ScopeToken::new("https://crates.io/scopes/publish:crate").unwrap();
+        let _reference: &str = owned.borrow();
+    }
+
+    #[test]
+    fn borrowed_borrow_str() {
+        let owned = ScopeTokenRef::from_str("https://crates.io/scopes/publish:crate").unwrap();
+        let _reference: &str = owned.borrow();
     }
 }

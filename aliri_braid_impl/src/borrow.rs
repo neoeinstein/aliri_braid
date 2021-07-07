@@ -370,6 +370,13 @@ fn comparison_impls(name: &syn::Ident, owned_type: &syn::Type) -> proc_macro2::T
             }
         }
 
+        impl PartialEq<&'_ #name> for #name {
+            #[inline]
+            fn eq(&self, other: &&#name) -> bool {
+                self.as_str() == other.as_str()
+            }
+        }
+
         impl PartialEq<Box<#name>> for #owned_type {
             #[inline]
             fn eq(&self, other: &Box<#name>) -> bool {
@@ -380,6 +387,20 @@ fn comparison_impls(name: &syn::Ident, owned_type: &syn::Type) -> proc_macro2::T
         impl PartialEq<Box<#name>> for &'_ #name {
             #[inline]
             fn eq(&self, other: &Box<#name>) -> bool {
+                self.as_str() == other.as_str()
+            }
+        }
+
+        impl PartialEq<Box<#name>> for #name {
+            #[inline]
+            fn eq(&self, other: &Box<#name>) -> bool {
+                self.as_str() == other.as_str()
+            }
+        }
+
+        impl PartialEq<#name> for &'_ #name {
+            #[inline]
+            fn eq(&self, other: &#name) -> bool {
                 self.as_str() == other.as_str()
             }
         }
@@ -422,6 +443,12 @@ fn conversion_impls(name: &syn::Ident, check_mode: &CheckMode) -> proc_macro2::T
                     #name::from_str(s)
                 }
             }
+
+            impl ::std::borrow::Borrow<str> for #name {
+                fn borrow(&self) -> &str {
+                    &self.0
+                }
+            }
         },
         CheckMode::Validate(validator) => {
             let validator = super::as_validator(validator);
@@ -431,6 +458,12 @@ fn conversion_impls(name: &syn::Ident, check_mode: &CheckMode) -> proc_macro2::T
 
                     fn try_from(s: &'a str) -> Result<&'a #name, Self::Error> {
                         #name::from_str(s)
+                    }
+                }
+
+                impl ::std::borrow::Borrow<str> for #name {
+                    fn borrow(&self) -> &str {
+                        &self.0
                     }
                 }
             }
@@ -452,9 +485,22 @@ fn conversion_impls(name: &syn::Ident, check_mode: &CheckMode) -> proc_macro2::T
     quote! {
         #from_str
 
+        impl AsRef<str> for #name {
+            fn as_ref(&self) -> &str {
+                &self.0
+            }
+        }
+
         impl<'a> From<&'a #name> for ::std::borrow::Cow<'a, #name> {
             fn from(r: &'a #name) -> Self {
                 ::std::borrow::Cow::Borrowed(r)
+            }
+        }
+
+
+        impl<'a, 'b: 'a> From<&'a ::std::borrow::Cow<'b, #name>> for &'a #name {
+            fn from(r: &'a ::std::borrow::Cow<'b, #name>) -> &'a #name {
+                ::std::borrow::Borrow::borrow(r)
             }
         }
     }

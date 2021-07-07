@@ -316,6 +316,13 @@ pub fn common_impls(name: &syn::Ident, ref_type: &syn::Type) -> proc_macro2::Tok
                 ::std::ops::Deref::deref(self)
             }
         }
+
+        impl AsRef<str> for #name {
+            #[inline]
+            fn as_ref(&self) -> &str {
+                self.as_str()
+            }
+        }
     }
 }
 
@@ -345,6 +352,13 @@ fn infallible_conversion_impls(
             #[inline]
             fn from_str(s: &str) -> Result<Self, Self::Err> {
                 Ok(Self::from(s))
+            }
+        }
+
+        impl ::std::borrow::Borrow<str> for #name {
+            #[inline]
+            fn borrow(&self) -> &str {
+                self.as_str()
             }
         }
 
@@ -392,6 +406,13 @@ fn fallible_conversion_impls(
             #[inline]
             fn from_str(s: &str) -> Result<Self, Self::Err> {
                 Self::new(s)
+            }
+        }
+
+        impl ::std::borrow::Borrow<str> for #name {
+            #[inline]
+            fn borrow(&self) -> &str {
+                self.as_str()
             }
         }
 
@@ -496,6 +517,12 @@ fn conversion_impls(
                     ::std::borrow::Cow::Borrowed(b) => b.to_owned(),
                     ::std::borrow::Cow::Owned(o) => o,
                 }
+            }
+        }
+
+        impl<'a> From<#name> for ::std::borrow::Cow<'a, #ref_type> {
+            fn from(owned: #name) -> Self {
+                ::std::borrow::Cow::Owned(owned)
             }
         }
     }

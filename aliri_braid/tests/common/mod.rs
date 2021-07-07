@@ -2,7 +2,7 @@ macro_rules! assert_impl_all_with_lifetime {
     ($type:ty: $($trait:path),+ $(,)?) => {
         const _: fn() = || {
             // Only callable when `$type` implements all traits in `$($trait)+`.
-            fn assert_impl_all<'a, T: ?Sized $(+ $trait)+>() {}
+            fn assert_impl_all<'a, 'b: 'a, T: ?Sized $(+ $trait)+>() {}
             assert_impl_all::<$type>();
         };
     };
@@ -14,6 +14,12 @@ macro_rules! assert_core_impls {
             $owned:
             std::convert::From<String>,
             std::convert::From<&'a str>,
+            std::borrow::Borrow<str>,
+        );
+
+        assert_impl_all_with_lifetime!(
+            $borrowed:
+            std::borrow::Borrow<str>,
         );
 
         assert_impl_all_with_lifetime!(
@@ -27,6 +33,16 @@ macro_rules! assert_core_impls {
         assert_core_impls!($owned => $borrowed where Error = ($error, aliri_braid::NormalizationError<$error>));
     };
     ($owned:ty => $borrowed:ty where ValidationError = $error:ty) => {
+        assert_impl_all_with_lifetime!(
+            $owned:
+            std::borrow::Borrow<str>,
+        );
+
+        assert_impl_all_with_lifetime!(
+            $borrowed:
+            std::borrow::Borrow<str>,
+        );
+
         assert_core_impls!($owned => $borrowed where Error = ($error, $error));
     };
     ($owned:ty => $borrowed:ty where Error = ($error:ty, $verror:ty)) => {
@@ -42,6 +58,7 @@ macro_rules! assert_core_impls {
             std::cmp::PartialEq<&'a $borrowed>,
             std::cmp::PartialEq<Box<$borrowed>>,
             std::convert::AsRef<$borrowed>,
+            std::convert::AsRef<str>,
             std::convert::From<&'a $borrowed>,
             std::convert::From<Box<$borrowed>>,
             std::convert::From<std::borrow::Cow<'a, $borrowed>>,
@@ -60,6 +77,8 @@ macro_rules! assert_core_impls {
             std::cmp::Eq,
             std::cmp::PartialEq<$owned>,
             std::cmp::PartialEq<$borrowed>,
+            std::cmp::PartialEq<&'a $borrowed>,
+            std::cmp::PartialEq<Box<$borrowed>>,
             std::borrow::ToOwned<Owned = $owned>,
         );
 
@@ -70,9 +89,16 @@ macro_rules! assert_core_impls {
             std::hash::Hash,
             std::cmp::Eq,
             std::cmp::PartialEq<$owned>,
+            std::cmp::PartialEq<$borrowed>,
             std::cmp::PartialEq<&'a $borrowed>,
             std::cmp::PartialEq<Box<$borrowed>>,
+            std::convert::From<&'a std::borrow::Cow<'b, $borrowed>>,
             std::convert::TryFrom<&'a str, Error = $verror>,
+        );
+
+        assert_impl_all_with_lifetime!(
+            std::borrow::Cow<'static, $borrowed>:
+            std::convert::From<$owned>,
         );
 
         assert_impl_all_with_lifetime!(

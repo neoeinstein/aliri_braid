@@ -124,4 +124,43 @@ mod tests {
         let x = LowerStr::from_normalized_str("");
         assert!(matches!(x, Err(_)));
     }
+
+    #[allow(dead_code)]
+    struct Bar<'a> {
+        foo: std::borrow::Cow<'a, LowerStr>,
+    }
+
+    #[test]
+    fn owned_as_cow() {
+        let owned = LowerString::new("ORANGE").unwrap();
+        let _bar = Bar {
+            foo: owned.into(),
+        };
+    }
+
+    #[test]
+    fn borrowed_as_cow() {
+        let borrowed = LowerStr::from_normalized_str("orange").unwrap();
+        let _bar = Bar {
+            foo: borrowed.into(),
+        };
+    }
+
+    #[test]
+    fn owned_as_ref_borrowed() {
+        let owned = LowerString::new("ORANGE").unwrap();
+        let _reference: &LowerStr = owned.as_ref();
+    }
+
+    #[test]
+    fn owned_as_ref_str() {
+        let owned = LowerString::new("ORANGE").unwrap();
+        let _reference: &str = owned.as_ref();
+    }
+
+    #[test]
+    fn borrowed_as_ref_str() {
+        let owned = LowerStr::from_normalized_str("orange").unwrap();
+        let _reference: &str = owned.as_ref();
+    }
 }
