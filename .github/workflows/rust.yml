@@ -75,3 +75,9 @@ jobs:
         with:
           command: clippy
           args: --all -- -D warnings
+
+      - name: Run cargo clippy on tests
+        uses: actions-rs/cargo@v1
+        with:
+          command: clippy
+          args: --all --tests -- -D warnings
