@@ -125,6 +125,7 @@ fn infallible_owned_creation(ident: &syn::Ident) -> proc_macro2::TokenStream {
 
     let creation_functions = quote! {
         #[doc = #doc_comment]
+        #[inline]
         pub fn new<S: Into<String>>(s: S) -> Self {
             Self(s.into())
         }
@@ -154,12 +155,14 @@ fn fallible_owned_creation(ident: &syn::Ident, validator: &syn::Type) -> proc_ma
 
     quote! {
         #[doc = #doc_comment]
+        #[inline]
         pub fn new<S: Into<String> + AsRef<str>>(s: S) -> Result<Self, #validator::Error> {
             #validator::validate(s.as_ref())?;
             Ok(Self(s.into()))
         }
 
         #[doc = #doc_comment_unsafe]
+        #[inline]
         pub unsafe fn new_unchecked<S: Into<String>>(s: S) -> Self {
             Self(s.into())
         }
@@ -191,12 +194,14 @@ fn normalized_owned_creation(
 
     quote! {
         #[doc = #doc_comment]
+        #[inline]
         pub fn new<S: AsRef<str>>(s: S) -> Result<Self, #normalizer::Error> {
             let result = #normalizer::normalize(s.as_ref())?;
             Ok(Self(result.into_owned()))
         }
 
         #[doc = #doc_comment_unsafe]
+        #[inline]
         pub unsafe fn new_unchecked<S: Into<String>>(s: S) -> Self {
             Self(s.into())
         }
@@ -297,6 +302,7 @@ pub fn debug_impl(name: &syn::Ident, ref_type: &syn::Type) -> proc_macro2::Token
 pub fn common_impls(name: &syn::Ident, ref_type: &syn::Type) -> proc_macro2::TokenStream {
     quote! {
         impl ::std::hash::Hash for #name {
+            #[inline]
             fn hash<H: ::std::hash::Hasher>(&self, state: &mut H) {
                 use ::std::hash::Hash;
 
@@ -517,18 +523,21 @@ fn conversion_impls(
         #impls
 
         impl From<#name> for Box<#ref_type> {
+            #[inline]
             fn from(r: #name) -> Self {
                 r.into_boxed_ref()
             }
         }
 
         impl From<Box<#ref_type>> for #name {
+            #[inline]
             fn from(r: Box<#ref_type>) -> Self {
                 r.into_owned()
             }
         }
 
         impl<'a> From<::std::borrow::Cow<'a, #ref_type>> for #name {
+            #[inline]
             fn from(r: ::std::borrow::Cow<'a, #ref_type>) -> Self {
                 match r {
                     ::std::borrow::Cow::Borrowed(b) => b.to_owned(),
@@ -538,6 +547,7 @@ fn conversion_impls(
         }
 
         impl<'a> From<#name> for ::std::borrow::Cow<'a, #ref_type> {
+            #[inline]
             fn from(owned: #name) -> Self {
                 ::std::borrow::Cow::Owned(owned)
             }

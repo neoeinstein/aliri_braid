@@ -356,6 +356,7 @@ fn comparison_impls(name: &syn::Ident, owned_type: &syn::Type) -> proc_macro2::T
         }
 
         impl ::std::hash::Hash for #name {
+            #[inline]
             fn hash<H: ::std::hash::Hasher>(&self, state: &mut H) {
                 use ::std::hash::Hash;
 
@@ -455,12 +456,14 @@ fn conversion_impls(name: &syn::Ident, check_mode: &CheckMode) -> proc_macro2::T
     let from_str = match check_mode {
         CheckMode::None => quote! {
             impl<'a> From<&'a str> for &'a #name {
+                #[inline]
                 fn from(s: &'a str) -> &'a #name {
                     #name::from_str(s)
                 }
             }
 
             impl ::std::borrow::Borrow<str> for #name {
+                #[inline]
                 fn borrow(&self) -> &str {
                     &self.0
                 }
@@ -472,12 +475,14 @@ fn conversion_impls(name: &syn::Ident, check_mode: &CheckMode) -> proc_macro2::T
                 impl<'a> std::convert::TryFrom<&'a str> for &'a #name {
                     type Error = #validator::Error;
 
+                    #[inline]
                     fn try_from(s: &'a str) -> Result<&'a #name, Self::Error> {
                         #name::from_str(s)
                     }
                 }
 
                 impl ::std::borrow::Borrow<str> for #name {
+                    #[inline]
                     fn borrow(&self) -> &str {
                         &self.0
                     }
@@ -490,6 +495,7 @@ fn conversion_impls(name: &syn::Ident, check_mode: &CheckMode) -> proc_macro2::T
                 impl<'a> std::convert::TryFrom<&'a str> for &'a #name {
                     type Error = #validator::Error;
 
+                    #[inline]
                     fn try_from(s: &'a str) -> Result<&'a #name, Self::Error> {
                         #name::from_normalized_str(s)
                     }
@@ -502,12 +508,14 @@ fn conversion_impls(name: &syn::Ident, check_mode: &CheckMode) -> proc_macro2::T
         #from_str
 
         impl AsRef<str> for #name {
+            #[inline]
             fn as_ref(&self) -> &str {
                 &self.0
             }
         }
 
         impl<'a> From<&'a #name> for ::std::borrow::Cow<'a, #name> {
+            #[inline]
             fn from(r: &'a #name) -> Self {
                 ::std::borrow::Cow::Borrowed(r)
             }
@@ -515,6 +523,7 @@ fn conversion_impls(name: &syn::Ident, check_mode: &CheckMode) -> proc_macro2::T
 
 
         impl<'a, 'b: 'a> From<&'a ::std::borrow::Cow<'b, #name>> for &'a #name {
+            #[inline]
             fn from(r: &'a ::std::borrow::Cow<'b, #name>) -> &'a #name {
                 ::std::borrow::Borrow::borrow(r)
             }
