@@ -56,14 +56,14 @@ pub fn typed_string_params(
         })
         .transpose()?;
 
-    let clone = (!omit_clone).then(|| quote! { Clone, });
+    let clone = (!omit_clone).then(|| quote! { #[derive(Clone)] });
     let debug_impl =
         (impl_debug != parameters::AutoImplOption::None).then(|| debug_impl(name, &ref_type));
     let display_impl =
         (impl_debug != parameters::AutoImplOption::None).then(|| display_impl(name, &ref_type));
 
     let output = quote! {
-        #[derive(#clone Hash, PartialEq, Eq)]
+        #clone
         #[repr(transparent)]
         #body
 
@@ -296,6 +296,23 @@ pub fn debug_impl(name: &syn::Ident, ref_type: &syn::Type) -> proc_macro2::Token
 
 pub fn common_impls(name: &syn::Ident, ref_type: &syn::Type) -> proc_macro2::TokenStream {
     quote! {
+        impl ::std::hash::Hash for #name {
+            fn hash<H: ::std::hash::Hasher>(&self, state: &mut H) {
+                use ::std::hash::Hash;
+
+                self.0.hash(state);
+            }
+        }
+
+        impl ::std::cmp::Eq for #name {}
+
+        impl PartialEq<#name> for #name {
+            #[inline]
+            fn eq(&self, other: &#name) -> bool {
+                self.as_str() == other.as_str()
+            }
+        }
+
         impl From<&'_ #ref_type> for #name {
             #[inline]
             fn from(s: &#ref_type) -> Self {

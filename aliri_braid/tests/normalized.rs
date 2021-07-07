@@ -133,9 +133,7 @@ mod tests {
     #[test]
     fn owned_as_cow() {
         let owned = LowerString::new("ORANGE").unwrap();
-        let _bar = Bar {
-            foo: owned.into(),
-        };
+        let _bar = Bar { foo: owned.into() };
     }
 
     #[test]

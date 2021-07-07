@@ -38,9 +38,7 @@ mod tests {
     #[test]
     fn owned_as_cow() {
         let owned = BasicExampleBuf::new("Testing the Buffer");
-        let _bar = Bar {
-            foo: owned.into(),
-        };
+        let _bar = Bar { foo: owned.into() };
     }
 
     #[test]

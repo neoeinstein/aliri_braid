@@ -36,7 +36,6 @@ pub fn typed_string_ref_params(
     let serde_impls = derive_serde.then(|| serde_impls(&body.ident, &owned_type, &check_mode));
 
     let output = quote! {
-        #[derive(Hash, PartialEq, Eq)]
         #[repr(transparent)]
         #body
 
@@ -353,6 +352,23 @@ fn comparison_impls(name: &syn::Ident, owned_type: &syn::Type) -> proc_macro2::T
             #[inline]
             fn to_owned(&self) -> Self::Owned {
                 #owned_type(self.0.to_owned())
+            }
+        }
+
+        impl ::std::hash::Hash for #name {
+            fn hash<H: ::std::hash::Hasher>(&self, state: &mut H) {
+                use ::std::hash::Hash;
+
+                self.0.hash(state);
+            }
+        }
+
+        impl ::std::cmp::Eq for #name {}
+
+        impl PartialEq<#name> for #name {
+            #[inline]
+            fn eq(&self, other: &#name) -> bool {
+                self.as_str() == other.as_str()
             }
         }
 

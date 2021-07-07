@@ -153,9 +153,7 @@ mod tests {
     #[test]
     fn owned_as_cow() {
         let owned = ScopeToken::new("https://crates.io/scopes/publish:crate").unwrap();
-        let _bar = Bar {
-            foo: owned.into(),
-        };
+        let _bar = Bar { foo: owned.into() };
     }
 
     #[test]
