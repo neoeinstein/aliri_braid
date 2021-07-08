@@ -4,6 +4,11 @@
 //! Braid helps in that endeavor by making it painless to create wrappers around your
 //! string values, ensuring that you use them in the right way every time.
 //!
+//! Examples of the documentation and implementations provided for braids are available
+//! below and in the [`aliri_braid_examples`] crate documentation.
+//!
+//!   [`aliri_braid_examples`]: https://docs.rs/aliri_braid_examples/*/aliri_braid_examples
+//!
 //! # Usage
 //!
 //! A braid is created by attaching `#[braid]` to a struct definition. The macro will take
