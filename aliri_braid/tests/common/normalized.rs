@@ -184,21 +184,21 @@ fn can_use_refs_as_hash_keys() -> Result<(), Box<dyn std::error::Error>> {
 fn verify_serialization_fail_borrow() {
     const SERIALIZATION: &str = "\"Test 🏗\"";
     dbg!(SERIALIZATION.as_bytes());
-    let _: &Normalized = serde_json::from_str(&SERIALIZATION).unwrap();
+    let _: &Normalized = serde_json::from_str(SERIALIZATION).unwrap();
 }
 
 #[test]
 #[should_panic]
 fn verify_serialization_fail_boxed() {
     const SERIALIZATION: &str = "\"Test 🏗\"";
-    let _: Box<Normalized> = serde_json::from_str(&SERIALIZATION).unwrap();
+    let _: Box<Normalized> = serde_json::from_str(SERIALIZATION).unwrap();
 }
 
 #[test]
 #[should_panic]
 fn verify_serialization_fail_owned() {
     const SERIALIZATION: &str = "\"Test 🏗\"";
-    let _: NormalizedBuf = serde_json::from_str(&SERIALIZATION).unwrap();
+    let _: NormalizedBuf = serde_json::from_str(SERIALIZATION).unwrap();
 }
 
 #[test]
@@ -206,7 +206,7 @@ fn verify_serialization_fail_owned() {
 fn verify_serialization_fail_borrow_valid_but_non_normal() {
     const SERIALIZATION: &str = "\"Test \u{037E}\"";
     dbg!(SERIALIZATION.as_bytes());
-    let _: &Normalized = serde_json::from_str(&SERIALIZATION).unwrap();
+    let _: &Normalized = serde_json::from_str(SERIALIZATION).unwrap();
 }
 
 #[test]
@@ -214,7 +214,7 @@ fn verify_serialization_pass_boxed_valid_but_non_normal() -> Result<(), Box<dyn 
 {
     const SERIALIZATION: &str = "\"Test \u{037E}\"";
     let expected = &*Normalized::from_str("Test\u{037E}")?;
-    let actual: Box<Normalized> = serde_json::from_str(&SERIALIZATION)?;
+    let actual: Box<Normalized> = serde_json::from_str(SERIALIZATION)?;
     assert_eq!(expected, actual);
     Ok(())
 }
@@ -224,7 +224,7 @@ fn verify_serialization_pass_owned_valid_but_non_normal() -> Result<(), Box<dyn 
 {
     const SERIALIZATION: &str = "\"Test \u{037E}\"";
     let expected = &*Normalized::from_str("Test\u{037E}")?;
-    let actual: NormalizedBuf = serde_json::from_str(&SERIALIZATION)?;
+    let actual: NormalizedBuf = serde_json::from_str(SERIALIZATION)?;
     assert_eq!(expected, actual);
     Ok(())
 }
@@ -233,7 +233,7 @@ fn verify_serialization_pass_owned_valid_but_non_normal() -> Result<(), Box<dyn 
 fn verify_serialization_pass_borrow() -> Result<(), Box<dyn std::error::Error>> {
     const SERIALIZATION: &str = "\"Test\u{037E}\"";
     let expected = &*Normalized::from_str("Test\u{037E}")?;
-    let actual: &Normalized = serde_json::from_str(&SERIALIZATION)?;
+    let actual: &Normalized = serde_json::from_str(SERIALIZATION)?;
     assert_eq!(expected, actual);
     Ok(())
 }
@@ -242,7 +242,7 @@ fn verify_serialization_pass_borrow() -> Result<(), Box<dyn std::error::Error>> 
 fn verify_serialization_pass_boxed() -> Result<(), Box<dyn std::error::Error>> {
     const SERIALIZATION: &str = "\"Test\u{037E}\"";
     let expected = &*Normalized::from_str("Test\u{037E}")?;
-    let actual: Box<Normalized> = serde_json::from_str(&SERIALIZATION)?;
+    let actual: Box<Normalized> = serde_json::from_str(SERIALIZATION)?;
     assert_eq!(expected, actual);
     Ok(())
 }
@@ -251,7 +251,7 @@ fn verify_serialization_pass_boxed() -> Result<(), Box<dyn std::error::Error>> {
 fn verify_serialization_pass_owned() -> Result<(), Box<dyn std::error::Error>> {
     const SERIALIZATION: &str = "\"Test\u{037E}\"";
     let expected = &*Normalized::from_str("Test\u{037E}")?;
-    let actual: NormalizedBuf = serde_json::from_str(&SERIALIZATION)?;
+    let actual: NormalizedBuf = serde_json::from_str(SERIALIZATION)?;
     assert_eq!(expected, actual);
     Ok(())
 }

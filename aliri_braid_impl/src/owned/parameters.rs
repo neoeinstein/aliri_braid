@@ -81,10 +81,7 @@ impl std::convert::TryFrom<syn::AttributeArgs> for Parameters {
                 | syn::NestedMeta::Meta(syn::Meta::Path(ref path)) => {
                     return Err(syn::Error::new_spanned(
                         &arg,
-                        format!(
-                            "unsupported argument `{}`",
-                            path.to_token_stream().to_string()
-                        ),
+                        format!("unsupported argument `{}`", path.to_token_stream()),
                     ));
                 }
                 _ => {

@@ -25,7 +25,9 @@ pub fn typed_string_ref_params(
     } = params;
 
     let (_wrapped_type, field_ident) = get_or_set_wrapped_ref_type(&mut body.fields)?;
-    let field = field_ident.as_ref().map_or_else(|| quote!{0}, |i| i.to_token_stream());
+    let field = field_ident
+        .as_ref()
+        .map_or_else(|| quote! {0}, |i| i.to_token_stream());
     let inherent_impl = inherent_impl(&body.ident, &owned_type, &check_mode, &field);
 
     let comparison_impls = owned_type
@@ -51,7 +53,9 @@ pub fn typed_string_ref_params(
     Ok(output)
 }
 
-fn get_or_set_wrapped_ref_type(fields: &mut syn::Fields) -> Result<(syn::Type, Option<syn::Ident>), syn::Error> {
+fn get_or_set_wrapped_ref_type(
+    fields: &mut syn::Fields,
+) -> Result<(syn::Type, Option<syn::Ident>), syn::Error> {
     if fields.is_empty() {
         let def_type: syn::Type = syn::parse2(quote! { str }).unwrap();
         let flds = syn::parse2(quote! { (#def_type) }).unwrap();
@@ -357,7 +361,12 @@ fn normalized_ref_creation(
     creation_functions
 }
 
-fn comparison_impls(name: &syn::Ident, owned_type: &syn::Type, field_ident: &Option<syn::Ident>, field: &proc_macro2::TokenStream) -> proc_macro2::TokenStream {
+fn comparison_impls(
+    name: &syn::Ident,
+    owned_type: &syn::Type,
+    field_ident: &Option<syn::Ident>,
+    field: &proc_macro2::TokenStream,
+) -> proc_macro2::TokenStream {
     let create = if let Some(field) = field_ident {
         quote! { #owned_type { #field: self.#field.to_owned() } }
     } else {
@@ -471,7 +480,11 @@ fn comparison_impls(name: &syn::Ident, owned_type: &syn::Type, field_ident: &Opt
     }
 }
 
-fn conversion_impls(name: &syn::Ident, check_mode: &CheckMode, field: &proc_macro2::TokenStream) -> proc_macro2::TokenStream {
+fn conversion_impls(
+    name: &syn::Ident,
+    check_mode: &CheckMode,
+    field: &proc_macro2::TokenStream,
+) -> proc_macro2::TokenStream {
     let from_str = match check_mode {
         CheckMode::None => quote! {
             impl<'a> From<&'a str> for &'a #name {

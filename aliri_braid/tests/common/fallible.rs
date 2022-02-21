@@ -161,28 +161,28 @@ fn can_use_refs_as_hash_keys() -> Result<(), Box<dyn std::error::Error>> {
 fn verify_serialization_fail_borrow() {
     const SERIALIZATION: &str = "\"Test 🏗\"";
     dbg!(SERIALIZATION.as_bytes());
-    let _: &Validated = serde_json::from_str(&SERIALIZATION).unwrap();
+    let _: &Validated = serde_json::from_str(SERIALIZATION).unwrap();
 }
 
 #[test]
 #[should_panic]
 fn verify_serialization_fail_boxed() {
     const SERIALIZATION: &str = "\"Test 🏗\"";
-    let _: Box<Validated> = serde_json::from_str(&SERIALIZATION).unwrap();
+    let _: Box<Validated> = serde_json::from_str(SERIALIZATION).unwrap();
 }
 
 #[test]
 #[should_panic]
 fn verify_serialization_fail_owned() {
     const SERIALIZATION: &str = "\"Test 🏗\"";
-    let _: ValidatedBuf = serde_json::from_str(&SERIALIZATION).unwrap();
+    let _: ValidatedBuf = serde_json::from_str(SERIALIZATION).unwrap();
 }
 
 #[test]
 fn verify_serialization_pass_borrow() -> Result<(), Box<dyn std::error::Error>> {
     const SERIALIZATION: &str = "\"Test \u{037E}\"";
     let expected = Validated::from_str("Test \u{037E}")?;
-    let actual: &Validated = serde_json::from_str(&SERIALIZATION)?;
+    let actual: &Validated = serde_json::from_str(SERIALIZATION)?;
     assert_eq!(expected, actual);
     Ok(())
 }
@@ -191,7 +191,7 @@ fn verify_serialization_pass_borrow() -> Result<(), Box<dyn std::error::Error>> 
 fn verify_serialization_pass_boxed() -> Result<(), Box<dyn std::error::Error>> {
     const SERIALIZATION: &str = "\"Test \u{037E}\"";
     let expected = Validated::from_str("Test \u{037E}")?;
-    let actual: Box<Validated> = serde_json::from_str(&SERIALIZATION)?;
+    let actual: Box<Validated> = serde_json::from_str(SERIALIZATION)?;
     assert_eq!(expected, actual);
     Ok(())
 }
@@ -200,7 +200,7 @@ fn verify_serialization_pass_boxed() -> Result<(), Box<dyn std::error::Error>> {
 fn verify_serialization_pass_owned() -> Result<(), Box<dyn std::error::Error>> {
     const SERIALIZATION: &str = "\"Test \u{037E}\"";
     let expected = Validated::from_str("Test \u{037E}")?;
-    let actual: ValidatedBuf = serde_json::from_str(&SERIALIZATION)?;
+    let actual: ValidatedBuf = serde_json::from_str(SERIALIZATION)?;
     assert_eq!(expected, actual);
     Ok(())
 }

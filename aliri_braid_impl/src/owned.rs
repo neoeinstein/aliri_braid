@@ -2,7 +2,7 @@ mod parameters;
 
 use crate::check_mode::CheckMode;
 pub use parameters::Parameters;
-use quote::{format_ident, quote, TokenStreamExt, ToTokens};
+use quote::{format_ident, quote, ToTokens, TokenStreamExt};
 use std::convert::TryInto;
 
 pub fn typed_string_tokens(
@@ -30,10 +30,19 @@ pub fn typed_string_params(
 
     let (wrapped_type, field_ident, attrs) = get_or_set_wrapped_type(&mut body.fields)?;
     let name = &body.ident;
-    let field = field_ident.as_ref().map_or_else(|| quote!{0}, |i| i.to_token_stream());
+    let field = field_ident
+        .as_ref()
+        .map_or_else(|| quote! {0}, |i| i.to_token_stream());
     let check_mode = check_mode.infer_validator_if_missing(name);
 
-    let inherent_impls = inherent_impls(name, &ref_type, &wrapped_type, &check_mode, &field_ident, &field);
+    let inherent_impls = inherent_impls(
+        name,
+        &ref_type,
+        &wrapped_type,
+        &check_mode,
+        &field_ident,
+        &field,
+    );
     let common_impls = common_impls(name, &ref_type, &field);
     let conversion_impls = conversion_impls(name, &ref_type, &wrapped_type, &check_mode, &field);
 
@@ -98,7 +107,9 @@ fn infer_ref_type_from_owned_name(name: &syn::Ident) -> syn::Type {
     }
 }
 
-fn get_or_set_wrapped_type(fields: &mut syn::Fields) -> Result<(syn::Type, Option<syn::Ident>, Vec<syn::Attribute>), syn::Error> {
+fn get_or_set_wrapped_type(
+    fields: &mut syn::Fields,
+) -> Result<(syn::Type, Option<syn::Ident>, Vec<syn::Attribute>), syn::Error> {
     if fields.is_empty() {
         let def_type: syn::Type = syn::parse2(quote! { String }).unwrap();
         let flds = syn::parse2(quote! { (#def_type) }).unwrap();
@@ -134,7 +145,10 @@ fn get_or_set_wrapped_type(fields: &mut syn::Fields) -> Result<(syn::Type, Optio
     }
 }
 
-fn infallible_owned_creation(ident: &syn::Ident, field: &Option<syn::Ident>) -> proc_macro2::TokenStream {
+fn infallible_owned_creation(
+    ident: &syn::Ident,
+    field: &Option<syn::Ident>,
+) -> proc_macro2::TokenStream {
     let doc_comment = format!("Constructs a new {}", ident);
 
     let create = if let Some(field) = field {
@@ -154,7 +168,11 @@ fn infallible_owned_creation(ident: &syn::Ident, field: &Option<syn::Ident>) -> 
     creation_functions
 }
 
-fn fallible_owned_creation(ident: &syn::Ident, field: &Option<syn::Ident>, validator: &syn::Type) -> proc_macro2::TokenStream {
+fn fallible_owned_creation(
+    ident: &syn::Ident,
+    field: &Option<syn::Ident>,
+    validator: &syn::Type,
+) -> proc_macro2::TokenStream {
     let validator_tokens = validator.to_token_stream();
     let doc_comment = format!(
         "Constructs a new {} if it conforms to [`{}`]",
@@ -258,7 +276,9 @@ fn inherent_impls(
     let creation_functions = match check_mode {
         CheckMode::None => infallible_owned_creation(name, field_ident),
         CheckMode::Validate(validator) => fallible_owned_creation(name, field_ident, validator),
-        CheckMode::Normalize(normalizer) => normalized_owned_creation(name, field_ident, normalizer),
+        CheckMode::Normalize(normalizer) => {
+            normalized_owned_creation(name, field_ident, normalizer)
+        }
     };
 
     let doc_box = format!(
@@ -351,7 +371,11 @@ pub fn debug_impl(name: &syn::Ident, ref_type: &syn::Type) -> proc_macro2::Token
     }
 }
 
-pub fn common_impls(name: &syn::Ident, ref_type: &syn::Type, field: &proc_macro2::TokenStream) -> proc_macro2::TokenStream {
+pub fn common_impls(
+    name: &syn::Ident,
+    ref_type: &syn::Type,
+    field: &proc_macro2::TokenStream,
+) -> proc_macro2::TokenStream {
     quote! {
         impl ::std::hash::Hash for #name {
             #[inline]
@@ -678,7 +702,7 @@ mod tests {
         let name = owned_ident();
         let wrapped: syn::Type = wrapped_type();
 
-        let actual = serde_impls(&name, &CheckMode::None, &wrapped, &quote!{0});
+        let actual = serde_impls(&name, &CheckMode::None, &wrapped, &quote! {0});
         let expected = quote! {
             impl ::serde::Serialize for Owned {
                 fn serialize<S: ::serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
@@ -703,7 +727,7 @@ mod tests {
         let name = owned_ident();
         let wrapped: syn::Type = wrapped_type();
 
-        let actual = serde_impls(&name, &CheckMode::None, &wrapped, &quote!{orange});
+        let actual = serde_impls(&name, &CheckMode::None, &wrapped, &quote! {orange});
         let expected = quote! {
             impl ::serde::Serialize for Owned {
                 fn serialize<S: ::serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
@@ -728,7 +752,12 @@ mod tests {
         let name = owned_ident();
         let wrapped: syn::Type = wrapped_type();
 
-        let actual = serde_impls(&name, &CheckMode::Validate(validating_type()), &wrapped, &quote!{0});
+        let actual = serde_impls(
+            &name,
+            &CheckMode::Validate(validating_type()),
+            &wrapped,
+            &quote! {0},
+        );
         let expected = quote! {
             impl ::serde::Serialize for Owned {
                 fn serialize<S: ::serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
