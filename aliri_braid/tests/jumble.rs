@@ -21,6 +21,17 @@ pub struct ValidatedWithCustomRefName;
 #[braid(serde)]
 pub struct Orange;
 
+#[braid]
+pub struct OrangeWithNamedField {
+    id: String,
+}
+
+#[test]
+fn internal_access_to_named_ref_field_compile_test() {
+    let x = OrangeWithNamedFieldRef::from_str("thing");
+    let _ = &x.id;
+}
+
 #[braid(
     serde,
     validator,

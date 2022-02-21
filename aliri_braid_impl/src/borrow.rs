@@ -24,15 +24,16 @@ pub fn typed_string_ref_params(
         derive_serde,
     } = params;
 
-    let _wrapped_type = get_or_set_wrapped_ref_type(&mut body.fields)?;
-    let inherent_impl = inherent_impl(&body.ident, &owned_type, &check_mode);
+    let (_wrapped_type, field_ident) = get_or_set_wrapped_ref_type(&mut body.fields)?;
+    let field = field_ident.as_ref().map_or_else(|| quote!{0}, |i| i.to_token_stream());
+    let inherent_impl = inherent_impl(&body.ident, &owned_type, &check_mode, &field);
 
     let comparison_impls = owned_type
         .as_ref()
-        .map(|owned_type| comparison_impls(&body.ident, owned_type));
-    let conversion_impls = conversion_impls(&body.ident, &check_mode);
-    let display_impl = (!omit_display).then(|| display_impl(&body.ident));
-    let debug_impl = (!omit_debug).then(|| debug_impl(&body.ident));
+        .map(|owned_type| comparison_impls(&body.ident, owned_type, &field_ident, &field));
+    let conversion_impls = conversion_impls(&body.ident, &check_mode, &field);
+    let display_impl = (!omit_display).then(|| display_impl(&body.ident, &field));
+    let debug_impl = (!omit_debug).then(|| debug_impl(&body.ident, &field));
     let serde_impls = derive_serde.then(|| serde_impls(&body.ident, &owned_type, &check_mode));
 
     let output = quote! {
@@ -50,27 +51,38 @@ pub fn typed_string_ref_params(
     Ok(output)
 }
 
-fn get_or_set_wrapped_ref_type(fields: &mut syn::Fields) -> Result<syn::Type, syn::Error> {
+fn get_or_set_wrapped_ref_type(fields: &mut syn::Fields) -> Result<(syn::Type, Option<syn::Ident>), syn::Error> {
     if fields.is_empty() {
         let def_type: syn::Type = syn::parse2(quote! { str }).unwrap();
         let flds = syn::parse2(quote! { (#def_type) }).unwrap();
         *fields = syn::Fields::Unnamed(flds);
-        Ok(def_type)
+        Ok((def_type, None))
     } else if let syn::Fields::Unnamed(flds) = &mut *fields {
         let mut iter = flds.unnamed.iter();
         let f = iter.next().unwrap();
         if iter.next().is_some() {
             Err(syn::Error::new_spanned(
                 &flds,
-                "typed string can only have one unnamed field",
+                "typed string can only have one field",
             ))
         } else {
-            Ok(f.ty.clone())
+            Ok((f.ty.clone(), f.ident.clone()))
+        }
+    } else if let syn::Fields::Named(flds) = &mut *fields {
+        let mut iter = flds.named.iter();
+        let f = iter.next().unwrap();
+        if iter.next().is_some() {
+            Err(syn::Error::new_spanned(
+                &flds,
+                "typed string can only have one field",
+            ))
+        } else {
+            Ok((f.ty.clone(), f.ident.clone()))
         }
     } else {
         Err(syn::Error::new_spanned(
             &fields,
-            "typed string can only have one unnamed field",
+            "typed string can only have one field",
         ))
     }
 }
@@ -79,6 +91,7 @@ fn inherent_impl(
     name: &syn::Ident,
     owned_type: &Option<syn::Type>,
     check_mode: &CheckMode,
+    field: &proc_macro2::TokenStream,
 ) -> proc_macro2::TokenStream {
     let creation_functions = match check_mode {
         CheckMode::None => infallible_ref_creation(name, owned_type),
@@ -93,7 +106,7 @@ fn inherent_impl(
             /// Provides access to the underlying value as a string slice.
             #[inline]
             pub const fn as_str(&self) -> &str {
-                &self.0
+                &self.#field
             }
         }
     }
@@ -344,14 +357,20 @@ fn normalized_ref_creation(
     creation_functions
 }
 
-fn comparison_impls(name: &syn::Ident, owned_type: &syn::Type) -> proc_macro2::TokenStream {
+fn comparison_impls(name: &syn::Ident, owned_type: &syn::Type, field_ident: &Option<syn::Ident>, field: &proc_macro2::TokenStream) -> proc_macro2::TokenStream {
+    let create = if let Some(field) = field_ident {
+        quote! { #owned_type { #field: self.#field.to_owned() } }
+    } else {
+        quote! { #owned_type(self.0.to_owned()) }
+    };
+
     quote! {
         impl ToOwned for #name {
             type Owned = #owned_type;
 
             #[inline]
             fn to_owned(&self) -> Self::Owned {
-                #owned_type(self.0.to_owned())
+                #create
             }
         }
 
@@ -360,7 +379,7 @@ fn comparison_impls(name: &syn::Ident, owned_type: &syn::Type) -> proc_macro2::T
             fn hash<H: ::std::hash::Hasher>(&self, state: &mut H) {
                 use ::std::hash::Hash;
 
-                self.0.hash(state);
+                self.#field.hash(state);
             }
         }
 
@@ -452,7 +471,7 @@ fn comparison_impls(name: &syn::Ident, owned_type: &syn::Type) -> proc_macro2::T
     }
 }
 
-fn conversion_impls(name: &syn::Ident, check_mode: &CheckMode) -> proc_macro2::TokenStream {
+fn conversion_impls(name: &syn::Ident, check_mode: &CheckMode, field: &proc_macro2::TokenStream) -> proc_macro2::TokenStream {
     let from_str = match check_mode {
         CheckMode::None => quote! {
             impl<'a> From<&'a str> for &'a #name {
@@ -465,7 +484,7 @@ fn conversion_impls(name: &syn::Ident, check_mode: &CheckMode) -> proc_macro2::T
             impl ::std::borrow::Borrow<str> for #name {
                 #[inline]
                 fn borrow(&self) -> &str {
-                    &self.0
+                    &self.#field
                 }
             }
         },
@@ -484,7 +503,7 @@ fn conversion_impls(name: &syn::Ident, check_mode: &CheckMode) -> proc_macro2::T
                 impl ::std::borrow::Borrow<str> for #name {
                     #[inline]
                     fn borrow(&self) -> &str {
-                        &self.0
+                        &self.#field
                     }
                 }
             }
@@ -510,7 +529,7 @@ fn conversion_impls(name: &syn::Ident, check_mode: &CheckMode) -> proc_macro2::T
         impl AsRef<str> for #name {
             #[inline]
             fn as_ref(&self) -> &str {
-                &self.0
+                &self.#field
             }
         }
 
@@ -531,23 +550,23 @@ fn conversion_impls(name: &syn::Ident, check_mode: &CheckMode) -> proc_macro2::T
     }
 }
 
-fn display_impl(name: &syn::Ident) -> proc_macro2::TokenStream {
+fn display_impl(name: &syn::Ident, field: &proc_macro2::TokenStream) -> proc_macro2::TokenStream {
     quote! {
         impl ::std::fmt::Display for #name {
             #[inline]
             fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-                <str as ::std::fmt::Display>::fmt(&self.0, f)
+                <str as ::std::fmt::Display>::fmt(&self.#field, f)
             }
         }
     }
 }
 
-fn debug_impl(name: &syn::Ident) -> proc_macro2::TokenStream {
+fn debug_impl(name: &syn::Ident, field: &proc_macro2::TokenStream) -> proc_macro2::TokenStream {
     quote! {
         impl ::std::fmt::Debug for #name {
             #[inline]
             fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-                <str as ::std::fmt::Debug>::fmt(&self.0, f)
+                <str as ::std::fmt::Debug>::fmt(&self.#field, f)
             }
         }
     }
