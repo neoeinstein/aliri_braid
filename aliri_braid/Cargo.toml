@@ -3,7 +3,7 @@ name = "aliri_braid"
 description = "Improve and strengthen your strings by making them strongly-typed with less boilerplate"
 keywords = [ "string", "newtype", "validation", "normalization" ]
 categories = [ "data-structures", "rust-patterns" ]
-version = "0.1.9"
+version = "0.1.10"
 authors = ["Marcus Griep <marcus@griep.us>"]
 edition = "2018"
 readme = "../README.md"
@@ -13,7 +13,7 @@ repository = "https://github.com/neoeinstein/aliri_braid"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-aliri_braid_impl = { version = "=0.1.9", path = "../aliri_braid_impl" }
+aliri_braid_impl = { version = "=0.1.10", path = "../aliri_braid_impl" }
 
 [dev-dependencies]
 quickcheck = "1"
