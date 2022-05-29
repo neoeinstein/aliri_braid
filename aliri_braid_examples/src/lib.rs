@@ -5,6 +5,7 @@
 //! * [Wrapper][wrapper]
 //! * [Validated][validated]
 //! * [Normalized][normalized]
+#![deny(unsafe_code)]
 
 pub mod normalized;
 pub mod validated;

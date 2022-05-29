@@ -48,7 +48,7 @@ impl error::Error for EmptyString {}
     serde,
     normalizer,
     ref = "LowerStr",
-    ref_doc = "A borrowed reference to a non-empty, lowercase string"
+    ref_doc = "A borrowed reference to a non-empty, lowercase string",
 )]
 pub struct LowerString;
 

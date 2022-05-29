@@ -42,19 +42,19 @@ mod tests {
 
     #[test]
     fn owned_handles_already_normal() {
-        let x = LowerString::new("testing").unwrap();
+        let x = LowerString::from_static("testing");
         assert_eq!(x.as_str(), "testing");
     }
 
     #[test]
     fn owned_handles_valid_non_normal() {
-        let x = LowerString::new("TestIng").unwrap();
+        let x = LowerString::from_static("TestIng");
         assert_eq!(x.as_str(), "testing");
     }
 
     #[test]
     fn owned_rejects_invalid() {
-        let x = LowerString::new("");
+        let x = LowerString::new("".to_owned());
         assert!(matches!(x, Err(_)));
     }
 
@@ -66,10 +66,22 @@ mod tests {
     }
 
     #[test]
+    fn from_static_ref_handles_already_normal() {
+        let x = LowerStr::from_static("testing");
+        assert_eq!(x.as_str(), "testing");
+    }
+
+    #[test]
     fn ref_handles_valid_non_normal() {
         let x = LowerStr::from_str("TestIng").unwrap();
         assert!(matches!(x, Cow::Owned(_)));
         assert_eq!(x.as_str(), "testing");
+    }
+
+    #[test]
+    #[should_panic]
+    fn static_ref_handles_panics_on_non_normal() {
+        LowerStr::from_static("TestIng");
     }
 
     fn needs_ref(_: &LowerStr) {}
@@ -132,7 +144,7 @@ mod tests {
 
     #[test]
     fn owned_as_cow() {
-        let owned = LowerString::new("ORANGE").unwrap();
+        let owned = LowerString::new("ORANGE".to_owned()).unwrap();
         let _bar = Bar { foo: owned.into() };
     }
 
@@ -146,13 +158,13 @@ mod tests {
 
     #[test]
     fn owned_as_ref_borrowed() {
-        let owned = LowerString::new("ORANGE").unwrap();
+        let owned = LowerString::new("ORANGE".to_owned()).unwrap();
         let _reference: &LowerStr = owned.as_ref();
     }
 
     #[test]
     fn owned_as_ref_str() {
-        let owned = LowerString::new("ORANGE").unwrap();
+        let owned = LowerString::new("ORANGE".to_owned()).unwrap();
         let _reference: &str = owned.as_ref();
     }
 

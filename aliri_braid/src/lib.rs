@@ -33,7 +33,7 @@
 //!# #[braid]
 //!# pub struct DatabaseName;
 //!#
-//! let owned = DatabaseName::new("mongo");
+//! let owned = DatabaseName::new(String::from("mongo"));
 //! borrow_strong_string(&owned);
 //! take_strong_string(owned);
 //! ```
@@ -49,9 +49,9 @@
 //!# #[braid]
 //!# pub struct DatabaseName;
 //!#
-//! let owned = DatabaseName::new("mongo");
+//! let owned = DatabaseName::new(String::from("mongo"));
 //! borrow_raw_str(owned.as_str());
-//! take_raw_string(owned.into_string());
+//! take_raw_string(owned.into_inner());
 //! ```
 //!
 //! By default, the name of the borrowed form will be the same as the owned form
@@ -63,8 +63,8 @@
 //! #[braid]
 //! pub struct DatabaseName;
 //!
-//! let owned = DatabaseName::new("mongo");
-//! let borrowed = DatabaseNameRef::from_str("mongo");
+//! let owned = DatabaseName::from_static("mongo");
+//! let borrowed = DatabaseNameRef::from_static("mongo");
 //!# assert_eq!(owned, borrowed);
 //! ```
 //!
@@ -78,8 +78,8 @@
 //! #[braid]
 //! pub struct DatabaseNameBuf;
 //!
-//! let owned = DatabaseNameBuf::new("mongo");
-//! let borrowed = DatabaseName::from_str("mongo");
+//! let owned = DatabaseNameBuf::from_static("mongo");
+//! let borrowed = DatabaseName::from_static("mongo");
 //!# assert_eq!(owned, borrowed);
 //! ```
 //!
@@ -93,8 +93,8 @@
 //! #[braid(ref = "TempDb")]
 //! pub struct DatabaseNameBuf;
 //!
-//! let owned = DatabaseNameBuf::new("mongo");
-//! let borrowed = TempDb::from_str("mongo");
+//! let owned = DatabaseNameBuf::from_static("mongo");
+//! let borrowed = TempDb::from_static("mongo");
 //! let to_owned: DatabaseNameBuf = borrowed.to_owned();
 //!# assert_eq!(owned, borrowed);
 //! ```
@@ -109,8 +109,8 @@
 //! #[braid(ref_doc = "A temporary reference to a database name")]
 //! pub struct DatabaseName;
 //!#
-//!# let owned = DatabaseName::new("mongo");
-//!# let borrowed = DatabaseNameRef::from_str("mongo");
+//!# let owned = DatabaseName::from_static("mongo");
+//!# let borrowed = DatabaseNameRef::from_static("mongo");
 //!# assert_eq!(owned, borrowed);
 //! ```
 //!
@@ -177,7 +177,7 @@
 //! pub use amazon_arn::{AmazonArnBuf, AmazonArn};
 //!
 //! # fn main() {
-//! let x = AmazonArnBuf::new("arn:aws:iam::123456789012:user/Development");
+//! let x = AmazonArnBuf::from_static("arn:aws:iam::123456789012:user/Development");
 //! assert_eq!("iam", x.get_service());
 //! # }
 //! ```
@@ -230,6 +230,11 @@
 //! system to further control access to the interior values held by the braided type as
 //! described in the section on [encapsulation](#encapsulation).
 //!
+//! As a convenience, `from_static` functions are provided that accept `&'static str`. For fallible
+//! braids and the owned form of normalized braids, this function will panic if the value is not
+//! valid. For borrowed form of normalized braids, the function will panic if the value is not
+//! normalized.
+//!
 //! ```
 //!# use aliri_braid::braid;
 //!#
@@ -257,13 +262,17 @@
 //!     }
 //! }
 //!
-//! assert!(NonRootUsername::new("").is_err());
-//! assert!(NonRootUsername::new("root").is_err());
-//! assert!(NonRootUsername::new("nobody").is_ok());
+//! assert!(NonRootUsername::new("".to_string()).is_err());
+//! assert!(NonRootUsername::new("root".to_string()).is_err());
+//! assert!(NonRootUsername::new("nobody".to_string()).is_ok());
+//!
+//! NonRootUsername::from_static("nobody");
 //!
 //! assert!(NonRootUsernameRef::from_str("").is_err());
 //! assert!(NonRootUsernameRef::from_str("root").is_err());
 //! assert!(NonRootUsernameRef::from_str("nobody").is_ok());
+//!
+//! NonRootUsernameRef::from_static("nobody");
 //! ```
 //!
 //! Foreign validators can also be used by specifying the name of the type that
@@ -299,13 +308,17 @@
 //!#     }
 //! }
 //!
-//! assert!(NonRootUsername::new("").is_err());
-//! assert!(NonRootUsername::new("root").is_err());
-//! assert!(NonRootUsername::new("nobody").is_ok());
+//! assert!(NonRootUsername::new("".to_string()).is_err());
+//! assert!(NonRootUsername::new("root".to_string()).is_err());
+//! assert!(NonRootUsername::new("nobody".to_string()).is_ok());
+//!
+//! NonRootUsername::from_static("nobody");
 //!
 //! assert!(NonRootUsernameRef::from_str("").is_err());
 //! assert!(NonRootUsernameRef::from_str("root").is_err());
 //! assert!(NonRootUsernameRef::from_str("nobody").is_ok());
+//!
+//! NonRootUsernameRef::from_static("nobody");
 //! ```
 //!
 //! ## Normalization
@@ -354,9 +367,12 @@
 //!     }
 //! }
 //!
-//! assert!(HeaderName::new("").is_err());
-//! assert_eq!("mixedcase", HeaderName::new("MixedCase").unwrap().as_str());
-//! assert_eq!("lowercase", HeaderName::new("lowercase").unwrap().as_str());
+//! assert!(HeaderName::new("".to_string()).is_err());
+//! assert_eq!("mixedcase", HeaderName::new("MixedCase".to_string()).unwrap().as_str());
+//! assert_eq!("lowercase", HeaderName::new("lowercase".to_string()).unwrap().as_str());
+//!
+//! assert_eq!("mixedcase", HeaderName::from_static("MixedCase").as_str());
+//! assert_eq!("lowercase", HeaderName::from_static("lowercase").as_str());
 //!
 //! assert!(HeaderNameRef::from_str("").is_err());
 //! assert_eq!("mixedcase", HeaderNameRef::from_str("MixedCase").unwrap().as_str());
@@ -365,6 +381,8 @@
 //! assert!(HeaderNameRef::from_normalized_str("").is_err());
 //! assert!(HeaderNameRef::from_normalized_str("MixedCase").is_err());
 //! assert_eq!("lowercase", HeaderNameRef::from_normalized_str("lowercase").unwrap().as_str());
+//!
+//! assert_eq!("lowercase", HeaderNameRef::from_static("lowercase").as_str());
 //! ```
 //!
 //! ## Unchecked creation
@@ -437,7 +455,7 @@
 //!# }
 //!#
 //! unsafe {
-//!     NonRootUsername::new_unchecked("");
+//!     NonRootUsername::new_unchecked(String::from(""));
 //!     NonRootUsernameRef::from_str_unchecked("root");
 //! }
 //! ```
@@ -452,10 +470,12 @@
 //! * [`std::fmt::Display`]
 //! * [`std::hash::Hash`]
 //! * [`std::cmp::Eq`]
+//! * [`std::cmp::Ord`]
 //! * [`std::cmp::PartialEq<Owned>`]
 //! * [`std::cmp::PartialEq<Borrowed>`]
 //! * [`std::cmp::PartialEq<&Borrowed>`]
 //! * [`std::cmp::PartialEq<Box<Borrowed>>`]
+//! * [`std::cmp::PartialOrd`]
 //! * [`std::convert::AsRef<Borrowed>`]
 //! * [`std::convert::AsRef<str>`]
 //! * [`std::convert::From<&Borrowed>`]
@@ -480,10 +500,12 @@
 //! * [`std::fmt::Display`]
 //! * [`std::hash::Hash`]
 //! * [`std::cmp::Eq`]
+//! * [`std::cmp::Ord`]
 //! * [`std::cmp::PartialEq<Owned>`]
 //! * [`std::cmp::PartialEq<Borrowed>`]
 //! * [`std::cmp::PartialEq<&Borrowed>`]
 //! * [`std::cmp::PartialEq<Box<Borrowed>>`]
+//! * [`std::cmp::PartialOrd`]
 //! * [`std::convert::From<&Cow<Borrowed>>`]
 //! * [`std::borrow::ToOwned`] where `Owned = Owned`
 //!
@@ -524,7 +546,7 @@
 //!# use aliri_braid::braid;
 //!# use static_assertions::assert_not_impl_any;
 //!#
-//! #[braid(omit_clone)]
+//! #[braid(clone = "none")]
 //! pub struct Sensitive;
 //!
 //! assert_not_impl_any!(Sensitive: Clone);
@@ -553,7 +575,7 @@
 //!# use aliri_braid::braid;
 //! use std::fmt;
 //!#
-//! #[braid(omit_clone, display_impl = "owned", debug_impl = "owned")]
+//! #[braid(clone = "none", display = "owned", debug = "owned")]
 //! pub struct Sensitive;
 //!
 //! impl fmt::Debug for SensitiveRef {
@@ -568,7 +590,7 @@
 //!     }
 //! }
 //!
-//! let owned = Sensitive::new("secret value");
+//! let owned = Sensitive::from_static("secret value");
 //! assert_eq!("SENSITIVE", format!("{:?}", owned));
 //! assert_eq!("SENSITIVE DISPLAY", format!("{}", owned));
 //! assert_eq!("secret value", owned.as_str());
@@ -594,7 +616,7 @@
 //! #[braid(serde)]
 //! pub struct Username;
 //!
-//! let username = Username::new("root");
+//! let username = Username::from_static("root");
 //! let json = serde_json::to_string(&username).unwrap();
 //! let new_username: Username = serde_json::from_str(&json).unwrap();
 //!# assert_eq!(username, new_username);
@@ -668,27 +690,27 @@
     trivial_numeric_casts,
     unused_must_use
 )]
-#![forbid(unsafe_code)]
+#![deny(unsafe_code)]
 
 use std::{borrow::Cow, error, fmt};
 
 /// A validator that can verify a given input is valid given certain preconditions
 pub trait Validator {
     /// The error produced when the string is invalid
-    type Error: error::Error + Send + Sync + 'static;
+    type Error;
 
     /// Validates a string according to a predetermined set of rules
-    fn validate(s: &str) -> Result<(), Self::Error>;
+    fn validate(raw: &str) -> Result<(), Self::Error>;
 }
 
 /// A normalizer that can verify a given input is valid
 /// and performs necessary normalization
 pub trait Normalizer {
     /// The error produced when the string is invalid
-    type Error: error::Error + Send + Sync + 'static;
+    type Error;
 
     /// Validates and normalizes the borrowed input
-    fn normalize(s: &str) -> Result<Cow<str>, Self::Error>;
+    fn normalize(raw: &str) -> Result<Cow<str>, Self::Error>;
 }
 
 /// An error when validating a normalizable value, disallowing normalization
@@ -700,11 +722,14 @@ pub enum NormalizationError<E> {
     ValidatorError(E),
 }
 
-impl<E> fmt::Display for NormalizationError<E> {
+impl<E> fmt::Display for NormalizationError<E>
+where
+    E: fmt::Display,
+{
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Self::ValueNotNormal => f.write_str("value is not normalized"),
-            Self::ValidatorError(_) => f.write_str("value is invalid and cannot be normalized"),
+            Self::ValidatorError(err) => fmt::Display::fmt(err, f),
         }
     }
 }
@@ -716,7 +741,7 @@ where
     fn source(&self) -> Option<&(dyn error::Error + 'static)> {
         match self {
             Self::ValueNotNormal => None,
-            Self::ValidatorError(err) => Some(err),
+            Self::ValidatorError(err) => err.source(),
         }
     }
 }
@@ -735,8 +760,8 @@ where
 
     /// Validates the provided value, but additionally returns an error if the
     /// value is not already in normalized form
-    fn validate(s: &str) -> Result<(), Self::Error> {
-        match Self::normalize(s)? {
+    fn validate(raw: &str) -> Result<(), Self::Error> {
+        match Self::normalize(raw)? {
             Cow::Borrowed(_) => Ok(()),
             Cow::Owned(_) => Err(NormalizationError::ValueNotNormal),
         }
