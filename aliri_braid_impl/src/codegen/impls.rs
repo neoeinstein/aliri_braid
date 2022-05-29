@@ -1,5 +1,5 @@
+use super::{check_mode::CheckMode, OwnedCodeGen, RefCodeGen};
 use quote::{quote, ToTokens};
-use super::{OwnedCodeGen, RefCodeGen, check_mode::CheckMode};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ImplOption {
@@ -9,7 +9,9 @@ pub enum ImplOption {
 
 impl ImplOption {
     fn map<F>(self, f: F) -> Option<proc_macro2::TokenStream>
-    where F: FnOnce() -> proc_macro2::TokenStream {
+    where
+        F: FnOnce() -> proc_macro2::TokenStream,
+    {
         match self {
             Self::Implement => Some(f()),
             Self::Omit => None,
@@ -38,7 +40,9 @@ pub enum DelegatingImplOption {
 
 impl DelegatingImplOption {
     fn map_owned<F>(self, f: F) -> Option<proc_macro2::TokenStream>
-    where F: FnOnce() -> proc_macro2::TokenStream {
+    where
+        F: FnOnce() -> proc_macro2::TokenStream,
+    {
         match self {
             Self::Implement | Self::OwnedOnly => Some(f()),
             Self::Omit => None,
@@ -46,9 +50,11 @@ impl DelegatingImplOption {
     }
 
     fn map_ref<F>(self, f: F) -> Option<proc_macro2::TokenStream>
-    where F: FnOnce() -> proc_macro2::TokenStream {
+    where
+        F: FnOnce() -> proc_macro2::TokenStream,
+    {
         match self {
-            Self::Implement=> Some(f()),
+            Self::Implement => Some(f()),
             Self::Omit | Self::OwnedOnly => None,
         }
     }
@@ -124,11 +130,13 @@ impl ToImpl for ImplDisplay {
     fn to_owned_impl(&self, gen: &OwnedCodeGen) -> Option<proc_macro2::TokenStream> {
         let ty = gen.ty;
         let ref_ty = gen.ref_ty;
-        self.0.map_owned(|| quote! {
-            impl<'a> ::std::fmt::Display for #ty {
-                #[inline]
-                fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-                    <#ref_ty as ::std::fmt::Display>::fmt(::std::ops::Deref::deref(self), f)
+        self.0.map_owned(|| {
+            quote! {
+                impl<'a> ::std::fmt::Display for #ty {
+                    #[inline]
+                    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+                        <#ref_ty as ::std::fmt::Display>::fmt(::std::ops::Deref::deref(self), f)
+                    }
                 }
             }
         })
@@ -137,11 +145,13 @@ impl ToImpl for ImplDisplay {
     fn to_borrowed_impl(&self, gen: &RefCodeGen) -> Option<proc_macro2::TokenStream> {
         let ty = &gen.ty;
         let field_name = gen.field.name;
-        self.0.map_ref(|| quote! {
-            impl ::std::fmt::Display for #ty {
-                #[inline]
-                fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-                    <str as ::std::fmt::Display>::fmt(&self.#field_name, f)
+        self.0.map_ref(|| {
+            quote! {
+                impl ::std::fmt::Display for #ty {
+                    #[inline]
+                    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+                        <str as ::std::fmt::Display>::fmt(&self.#field_name, f)
+                    }
                 }
             }
         })
@@ -167,11 +177,13 @@ impl ToImpl for ImplDebug {
     fn to_owned_impl(&self, gen: &OwnedCodeGen) -> Option<proc_macro2::TokenStream> {
         let ty = gen.ty;
         let ref_ty = gen.ref_ty;
-        self.0.map_owned(|| quote! {
-            impl<'a> ::std::fmt::Debug for #ty {
-                #[inline]
-                fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-                    <#ref_ty as ::std::fmt::Debug>::fmt(::std::ops::Deref::deref(self), f)
+        self.0.map_owned(|| {
+            quote! {
+                impl<'a> ::std::fmt::Debug for #ty {
+                    #[inline]
+                    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+                        <#ref_ty as ::std::fmt::Debug>::fmt(::std::ops::Deref::deref(self), f)
+                    }
                 }
             }
         })
@@ -180,11 +192,13 @@ impl ToImpl for ImplDebug {
     fn to_borrowed_impl(&self, gen: &RefCodeGen) -> Option<proc_macro2::TokenStream> {
         let ty = &gen.ty;
         let field_name = gen.field.name;
-        self.0.map_ref(|| quote! {
-            impl ::std::fmt::Debug for #ty {
-                #[inline]
-                fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-                    <str as ::std::fmt::Debug>::fmt(&self.#field_name, f)
+        self.0.map_ref(|| {
+            quote! {
+                impl ::std::fmt::Debug for #ty {
+                    #[inline]
+                    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+                        <str as ::std::fmt::Debug>::fmt(&self.#field_name, f)
+                    }
                 }
             }
         })

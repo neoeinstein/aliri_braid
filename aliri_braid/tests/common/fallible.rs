@@ -1,8 +1,10 @@
 use crate::{Validated, ValidatedBuf};
 use quickcheck_macros::quickcheck;
 use static_assertions::{assert_eq_align, assert_eq_size, assert_eq_size_ptr, assert_eq_size_val};
-use std::{collections::HashSet, convert::TryInto};
-use std::collections::BTreeSet;
+use std::{
+    collections::{BTreeSet, HashSet},
+    convert::TryInto,
+};
 
 #[test]
 pub fn equality_tests() -> Result<(), Box<dyn std::error::Error>> {

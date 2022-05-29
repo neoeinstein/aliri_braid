@@ -1,13 +1,13 @@
 use std::borrow::Cow;
 
 use self::check_mode::{CheckMode, IndefiniteCheckMode};
-use self::impls::{Impls, DelegatingImplOption, ImplOption};
-use quote::{ToTokens, TokenStreamExt, format_ident};
+use self::impls::{DelegatingImplOption, ImplOption, Impls};
+use quote::{format_ident, ToTokens, TokenStreamExt};
 use symbol::{parse_lit_into_string, parse_lit_into_type};
 use syn::spanned::Spanned;
 
-pub use self::owned::OwnedCodeGen;
 pub use self::borrowed::RefCodeGen;
+pub use self::owned::OwnedCodeGen;
 
 mod borrowed;
 mod check_mode;
@@ -50,13 +50,17 @@ impl<'a> Params<'a> {
                 }
                 syn::NestedMeta::Meta(syn::Meta::NameValue(nv)) if nv.path == symbol::VALIDATOR => {
                     let validator = parse_lit_into_type(symbol::VALIDATOR, &nv.lit)?;
-                    params.check_mode
+                    params
+                        .check_mode
                         .try_set_validator(Some(validator))
                         .map_err(|s| syn::Error::new_spanned(arg, s))?;
                 }
-                syn::NestedMeta::Meta(syn::Meta::NameValue(nv)) if nv.path == symbol::NORMALIZER => {
+                syn::NestedMeta::Meta(syn::Meta::NameValue(nv))
+                    if nv.path == symbol::NORMALIZER =>
+                {
                     let normalizer = parse_lit_into_type(symbol::NORMALIZER, &nv.lit)?;
-                    params.check_mode
+                    params
+                        .check_mode
                         .try_set_normalizer(Some(normalizer))
                         .map_err(|s| syn::Error::new_spanned(arg, s))?;
                 }
@@ -97,19 +101,21 @@ impl<'a> Params<'a> {
                     params.impls.serde = ImplOption::Implement.into();
                 }
                 syn::NestedMeta::Meta(syn::Meta::Path(p)) if p == symbol::VALIDATOR => {
-                    params.check_mode
+                    params
+                        .check_mode
                         .try_set_validator(None)
                         .map_err(|s| syn::Error::new_spanned(arg, s))?;
                 }
                 syn::NestedMeta::Meta(syn::Meta::Path(p)) if p == symbol::NORMALIZER => {
-                    params.check_mode
+                    params
+                        .check_mode
                         .try_set_normalizer(None)
                         .map_err(|s| syn::Error::new_spanned(arg, s))?;
                 }
-                syn::NestedMeta::Meta(syn::Meta::Path(ref path) | syn::Meta::NameValue(syn::MetaNameValue {
-                    ref path,
-                    ..
-                })) => {
+                syn::NestedMeta::Meta(
+                    syn::Meta::Path(ref path)
+                    | syn::Meta::NameValue(syn::MetaNameValue { ref path, .. }),
+                ) => {
                     return Err(syn::Error::new_spanned(
                         &arg,
                         format!("unsupported argument `{}`", path.to_token_stream()),
@@ -189,7 +195,6 @@ impl<'a> CodeGen<'a> {
         }
     }
 
-
     pub fn owned(&self) -> OwnedCodeGen {
         OwnedCodeGen {
             common_attrs: &self.body.attrs,
@@ -212,7 +217,10 @@ impl<'a> CodeGen<'a> {
             field: self.field,
             attrs: &self.ref_attrs,
             ty: &self.ref_ty,
-            ident: syn::Ident::new(&self.ref_ty.to_token_stream().to_string(), self.ref_ty.span()),
+            ident: syn::Ident::new(
+                &self.ref_ty.to_token_stream().to_string(),
+                self.ref_ty.span(),
+            ),
             owned_ty: &self.body.ident,
             impls: &self.impls,
         }
@@ -234,16 +242,16 @@ fn infer_ref_type_from_owned_name(name: &syn::Ident) -> syn::Type {
     }
 }
 
-fn create_field_if_none(
-    fields: &mut syn::Fields,
-) {
+fn create_field_if_none(fields: &mut syn::Fields) {
     if fields.is_empty() {
         let field = syn::Field {
             vis: syn::Visibility::Inherited,
             attrs: Vec::new(),
             colon_token: None,
             ident: None,
-            ty: syn::Type::Verbatim(syn::Ident::new("String", proc_macro2::Span::call_site()).into_token_stream()),
+            ty: syn::Type::Verbatim(
+                syn::Ident::new("String", proc_macro2::Span::call_site()).into_token_stream(),
+            ),
         };
 
         *fields = syn::Fields::Unnamed(syn::FieldsUnnamed {
@@ -253,7 +261,9 @@ fn create_field_if_none(
     }
 }
 
-fn get_field_info(fields: &syn::Fields) -> Result<(&syn::Type, Option<&syn::Ident>, &[syn::Attribute]), syn::Error> {
+fn get_field_info(
+    fields: &syn::Fields,
+) -> Result<(&syn::Type, Option<&syn::Ident>, &[syn::Attribute]), syn::Error> {
     let mut iter = fields.iter();
     let field = iter.next().unwrap();
 
@@ -261,7 +271,7 @@ fn get_field_info(fields: &syn::Fields) -> Result<(&syn::Type, Option<&syn::Iden
         return Err(syn::Error::new_spanned(
             &fields,
             "typed string can only have one field",
-        ))
+        ));
     }
 
     Ok((&field.ty, field.ident.as_ref(), &field.attrs))
@@ -316,7 +326,13 @@ struct SelfConstructorImpl<'a>(Field<'a>);
 impl<'a> ToTokens for SelfConstructorImpl<'a> {
     fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
         let Self(field) = self;
-        tokens.append(proc_macro2::Ident::new("Self", proc_macro2::Span::call_site()));
-        tokens.append(proc_macro2::Group::new(field.name.constructor_delimiter(), field.name.input_name().into_token_stream()));
+        tokens.append(proc_macro2::Ident::new(
+            "Self",
+            proc_macro2::Span::call_site(),
+        ));
+        tokens.append(proc_macro2::Group::new(
+            field.name.constructor_delimiter(),
+            field.name.input_name().into_token_stream(),
+        ));
     }
 }

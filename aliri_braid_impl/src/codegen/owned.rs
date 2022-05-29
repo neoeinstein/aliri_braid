@@ -1,6 +1,5 @@
-use super::{Field, AttrList, CheckMode, Impls, impls::ToImpl};
+use super::{impls::ToImpl, AttrList, CheckMode, Field, Impls};
 use quote::{quote, ToTokens};
-
 
 pub struct OwnedCodeGen<'a> {
     pub common_attrs: &'a [syn::Attribute],
@@ -71,7 +70,6 @@ impl<'a> OwnedCodeGen<'a> {
         let ref_ty = self.ref_ty;
         let wrapped_type = self.field.ty;
 
-
         quote! {
             #[doc = #doc_comment]
             #[inline]
@@ -123,7 +121,6 @@ impl<'a> OwnedCodeGen<'a> {
         let create = self.field.self_constructor();
         let ref_ty = self.ref_ty;
         let field_ty = self.field.ty;
-
 
         quote! {
             #[doc = #doc_comment]
@@ -275,7 +272,6 @@ impl<'a> OwnedCodeGen<'a> {
             }
         }
     }
-
 
     fn infallible_conversion(&self) -> proc_macro2::TokenStream {
         let ty = self.ty;
@@ -454,7 +450,8 @@ impl<'a> OwnedCodeGen<'a> {
         let debug = self.impls.debug.to_owned_impl(self);
         let serde = self.impls.serde.to_owned_impl(self);
 
-        let owned_attrs: proc_macro2::TokenStream = self.attrs.iter().map(|a| quote!{#[#a]}).collect();
+        let owned_attrs: proc_macro2::TokenStream =
+            self.attrs.iter().map(|a| quote! {#[#a]}).collect();
         let body = &self.body;
         let inherent = self.inherent();
         let conversion = self.conversion();

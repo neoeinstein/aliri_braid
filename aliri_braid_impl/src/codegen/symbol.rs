@@ -68,14 +68,20 @@ fn get_lit_str(attr_name: Symbol, lit: &syn::Lit) -> Result<&syn::LitStr, syn::E
 //     })
 // }
 
-pub(super) fn parse_lit_into_type(attr_name: Symbol, lit: &syn::Lit) -> Result<syn::Type, syn::Error> {
+pub(super) fn parse_lit_into_type(
+    attr_name: Symbol,
+    lit: &syn::Lit,
+) -> Result<syn::Type, syn::Error> {
     let string = get_lit_str(attr_name, lit)?;
     parse_lit_str(string).map_err(|_| {
         syn::Error::new_spanned(lit, format!("failed to parse type: {:?}", string.value()))
     })
 }
 
-pub(super) fn parse_lit_into_string(attr_name: Symbol, lit: &syn::Lit) -> Result<String, syn::Error> {
+pub(super) fn parse_lit_into_string(
+    attr_name: Symbol,
+    lit: &syn::Lit,
+) -> Result<String, syn::Error> {
     let string = get_lit_str(attr_name, lit)?;
     Ok(string.value())
 }

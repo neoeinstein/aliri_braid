@@ -54,7 +54,8 @@ pub fn braid(args: TokenStream, input: TokenStream) -> TokenStream {
     let args = parse_macro_input!(args as syn::AttributeArgs);
     let mut body = parse_macro_input!(input as syn::ItemStruct);
 
-    Params::parse(&args).and_then(|p| p.build(&mut body))
+    Params::parse(&args)
+        .and_then(|p| p.build(&mut body))
         .map_or_else(syn::Error::into_compile_error, |codegen| codegen.generate())
         .into()
 }

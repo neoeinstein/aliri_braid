@@ -1,6 +1,6 @@
+use super::{impls::ToImpl, AttrList, CheckMode, Field, FieldName, Impls};
+use quote::{quote, ToTokens, TokenStreamExt};
 use std::borrow::Cow;
-use super::{AttrList, Field, CheckMode, Impls, impls::ToImpl, FieldName};
-use quote::{quote, TokenStreamExt, ToTokens};
 
 pub struct RefCodeGen<'a> {
     pub doc: &'a [Cow<'a, syn::Lit>],
@@ -44,9 +44,9 @@ impl<'a> RefCodeGen<'a> {
 
     fn pointer_reinterpret_safety_comment(&self, is_mut: bool) -> proc_macro2::TokenStream {
         let doc = format!(
-                "SAFETY: `{ty}` is `#[repr(transparent)]` around a single `str` \
-                field, so a `*{ptr} str` can be safely reinterpreted as a \
-                `*{ptr} {ty}`",
+            "SAFETY: `{ty}` is `#[repr(transparent)]` around a single `str` \
+            field, so a `*{ptr} str` can be safely reinterpreted as a \
+            `*{ptr} {ty}`",
             ty = self.ident,
             ptr = if is_mut { "mut" } else { "const" },
         );
@@ -59,9 +59,13 @@ impl<'a> RefCodeGen<'a> {
 
     fn unchecked_safety_comment(is_normalized: bool) -> proc_macro2::TokenStream {
         let doc = format!(
-                "SAFETY: The value was just checked and found to already \
-                conform to the required implicit contracts of the {}.",
-            if is_normalized { "normalizer" } else { "validator" },
+            "SAFETY: The value was just checked and found to already \
+            conform to the required implicit contracts of the {}.",
+            if is_normalized {
+                "normalizer"
+            } else {
+                "validator"
+            },
         );
 
         quote! {
@@ -86,8 +90,7 @@ impl<'a> RefCodeGen<'a> {
 
         let into_owned_doc = format!(
             "Converts a [`Box<{}>`] into a [`{}`] without copying or allocating",
-            self.ident,
-            self.owned_ty,
+            self.ident, self.owned_ty,
         );
 
         let pointer_reinterpret_safety_comment = self.pointer_reinterpret_safety_comment(false);
@@ -140,8 +143,7 @@ impl<'a> RefCodeGen<'a> {
 
         let into_owned_doc = format!(
             "Converts a [`Box<{}>`] into a [`{}`] without copying or allocating",
-            self.ident,
-            self.owned_ty,
+            self.ident, self.owned_ty,
         );
 
         let ty = &self.ty;
@@ -330,7 +332,9 @@ impl<'a> RefCodeGen<'a> {
 
         let create = match self.field.name {
             FieldName::Unnamed => quote! { #owned_ty(self.0.to_owned()) },
-            FieldName::Named(field_name) => quote! { #owned_ty { #field_name: self.#field_name.to_owned() } },
+            FieldName::Named(field_name) => {
+                quote! { #owned_ty { #field_name: self.#field_name.to_owned() } }
+            }
         };
 
         quote! {
@@ -463,8 +467,10 @@ impl<'a> RefCodeGen<'a> {
         let display = self.impls.display.to_borrowed_impl(self);
         let serde = self.impls.serde.to_borrowed_impl(self);
 
-        let ref_doc: proc_macro2::TokenStream = self.doc.iter().map(|d| quote!{ #[doc = #d] }).collect();
-        let ref_attrs: proc_macro2::TokenStream = self.attrs.iter().map(|a| quote!{#[#a]}).collect();
+        let ref_doc: proc_macro2::TokenStream =
+            self.doc.iter().map(|d| quote! { #[doc = #d] }).collect();
+        let ref_attrs: proc_macro2::TokenStream =
+            self.attrs.iter().map(|a| quote! {#[#a]}).collect();
         let common_attrs = {
             let mut attrs = proc_macro2::TokenStream::new();
             if !self.doc.is_empty() {
