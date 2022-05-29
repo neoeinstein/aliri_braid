@@ -463,10 +463,15 @@ impl<'a> RefCodeGen<'a> {
         let display = self.impls.display.to_borrowed_impl(self);
         let serde = self.impls.serde.to_borrowed_impl(self);
 
+        let ref_doc: proc_macro2::TokenStream = self.doc.iter().map(|d| quote!{ #[doc = #d] }).collect();
         let ref_attrs: proc_macro2::TokenStream = self.attrs.iter().map(|a| quote!{#[#a]}).collect();
         let common_attrs = {
             let mut attrs = proc_macro2::TokenStream::new();
-            attrs.append_all(self.common_attrs);
+            if !self.doc.is_empty() {
+                attrs.append_all(self.common_attrs.iter().filter(|a| !is_doc_attribute(a)));
+            } else {
+                attrs.append_all(self.common_attrs);
+            }
             attrs
         };
         let vis = self.vis;
@@ -484,6 +489,7 @@ impl<'a> RefCodeGen<'a> {
         quote! {
             #[repr(transparent)]
             #[derive(Hash, PartialEq, Eq, PartialOrd, Ord)]
+            #ref_doc
             #ref_attrs
             #common_attrs
             #vis struct #ty #body
@@ -495,5 +501,13 @@ impl<'a> RefCodeGen<'a> {
             #display
             #serde
         }
+    }
+}
+
+fn is_doc_attribute(attr: &syn::Attribute) -> bool {
+    if let Some(ident) = attr.path.get_ident() {
+        ident == "doc"
+    } else {
+        false
     }
 }

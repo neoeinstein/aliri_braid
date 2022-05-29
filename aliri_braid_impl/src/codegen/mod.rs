@@ -130,7 +130,7 @@ impl<'a> Params<'a> {
     pub fn build(self, body: &'a mut syn::ItemStruct) -> Result<CodeGen, syn::Error> {
         let Params {
             ref_ty,
-            mut ref_doc,
+            ref_doc,
             ref_attrs,
             owned_attrs,
             check_mode,
@@ -140,9 +140,6 @@ impl<'a> Params<'a> {
         create_field_if_none(&mut body.fields);
         let (wrapped_type, field_ident, field_attrs) = get_field_info(&body.fields)?;
         let owned_ty = &body.ident;
-        if ref_doc.is_empty() {
-            ref_doc.push(Cow::Owned(syn::LitStr::new(&format!("A reference to a borrowed [`{}`]", owned_ty), proc_macro2::Span::call_site()).into()));
-        }
         let ref_ty = ref_ty.unwrap_or_else(|| infer_ref_type_from_owned_name(owned_ty));
         let check_mode = check_mode.infer_validator_if_missing(owned_ty);
         let field = Field {
