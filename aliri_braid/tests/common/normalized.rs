@@ -17,10 +17,10 @@ pub fn equality_tests() -> Result<(), Box<dyn std::error::Error>> {
 
     assert_eq!("OneTwo", x.clone().into_inner());
     let z = x.clone().into_boxed_ref();
-    assert_eq!(y, z);
-    assert_eq!(z, y);
-    assert_eq!(x, z);
-    assert_eq!(z, x);
+    assert_eq!(y, &*z);
+    assert_eq!(&*z, y);
+    assert_eq!(x, &*z);
+    assert_eq!(&*z, x);
 
     assert_eq!(x, z.into_owned());
 
@@ -252,7 +252,7 @@ fn verify_serialization_pass_boxed_valid_but_non_normal() -> Result<(), Box<dyn 
     const SERIALIZATION: &str = "\"Test \u{037E}\"";
     let expected = &*Normalized::from_str("Test\u{037E}")?;
     let actual: Box<Normalized> = serde_json::from_str(SERIALIZATION)?;
-    assert_eq!(expected, actual);
+    assert_eq!(expected, &*actual);
     Ok(())
 }
 
@@ -280,7 +280,7 @@ fn verify_serialization_pass_boxed() -> Result<(), Box<dyn std::error::Error>> {
     const SERIALIZATION: &str = "\"Test\u{037E}\"";
     let expected = &*Normalized::from_str("Test\u{037E}")?;
     let actual: Box<Normalized> = serde_json::from_str(SERIALIZATION)?;
-    assert_eq!(expected, actual);
+    assert_eq!(expected, &*actual);
     Ok(())
 }
 

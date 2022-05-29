@@ -18,10 +18,10 @@ pub fn equality_tests() {
 
     assert_eq!("One", x.clone().into_inner());
     let z = x.clone().into_boxed_ref();
-    assert_eq!(y, z);
-    assert_eq!(z, y);
-    assert_eq!(x, z);
-    assert_eq!(z, x);
+    assert_eq!(y, &*z);
+    assert_eq!(&*z, y);
+    assert_eq!(x, &*z);
+    assert_eq!(&*z, x);
 
     assert_eq!(x, z.into_owned());
 }
@@ -186,11 +186,11 @@ fn verify_serialization_non_validated() -> Result<(), Box<dyn std::error::Error>
     let borrow_serialized = serde_json::to_string(borrow)?;
     assert_eq!(EXPECTED_SERIALIZATION, borrow_serialized);
     let boxed: Box<OrangeRef> = serde_json::from_str(&borrow_serialized)?;
-    assert_eq!(borrow, boxed);
+    assert_eq!(borrow, &*boxed);
     let box_serialized = serde_json::to_string(&boxed)?;
     assert_eq!(EXPECTED_SERIALIZATION, box_serialized);
     let owned: Orange = serde_json::from_str(&box_serialized)?;
-    assert_eq!(boxed, owned);
+    assert_eq!(*boxed, *owned);
 
     assert_eq!(owned, start);
     Ok(())

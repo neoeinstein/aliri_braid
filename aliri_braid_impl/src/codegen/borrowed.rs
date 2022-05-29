@@ -350,48 +350,6 @@ impl<'a> RefCodeGen<'a> {
                 }
             }
 
-            impl PartialEq<&'_ #ty> for #owned_ty {
-                #[inline]
-                fn eq(&self, other: &&#ty) -> bool {
-                    self.as_str() == other.as_str()
-                }
-            }
-
-            impl PartialEq<&'_ #ty> for #ty {
-                #[inline]
-                fn eq(&self, other: &&#ty) -> bool {
-                    self.as_str() == other.as_str()
-                }
-            }
-
-            impl PartialEq<Box<#ty>> for #owned_ty {
-                #[inline]
-                fn eq(&self, other: &Box<#ty>) -> bool {
-                    self.as_str() == other.as_str()
-                }
-            }
-
-            impl PartialEq<Box<#ty>> for &'_ #ty {
-                #[inline]
-                fn eq(&self, other: &Box<#ty>) -> bool {
-                    self.as_str() == other.as_str()
-                }
-            }
-
-            impl PartialEq<Box<#ty>> for #ty {
-                #[inline]
-                fn eq(&self, other: &Box<#ty>) -> bool {
-                    self.as_str() == other.as_str()
-                }
-            }
-
-            impl PartialEq<#ty> for &'_ #ty {
-                #[inline]
-                fn eq(&self, other: &#ty) -> bool {
-                    self.as_str() == other.as_str()
-                }
-            }
-
             impl PartialEq<#owned_ty> for #ty {
                 #[inline]
                 fn eq(&self, other: &#owned_ty) -> bool {
@@ -399,23 +357,16 @@ impl<'a> RefCodeGen<'a> {
                 }
             }
 
+            impl PartialEq<&'_ #ty> for #owned_ty {
+                #[inline]
+                fn eq(&self, other: &&#ty) -> bool {
+                    self.as_str() == other.as_str()
+                }
+            }
+
             impl PartialEq<#owned_ty> for &'_ #ty {
                 #[inline]
                 fn eq(&self, other: &#owned_ty) -> bool {
-                    self.as_str() == other.as_str()
-                }
-            }
-
-            impl PartialEq<#owned_ty> for Box<#ty> {
-                #[inline]
-                fn eq(&self, other: &#owned_ty) -> bool {
-                    self.as_str() == other.as_str()
-                }
-            }
-
-            impl PartialEq<&'_ #ty> for Box<#ty> {
-                #[inline]
-                fn eq(&self, other: &&#ty) -> bool {
                     self.as_str() == other.as_str()
                 }
             }
