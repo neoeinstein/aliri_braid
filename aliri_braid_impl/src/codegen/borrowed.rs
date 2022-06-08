@@ -380,6 +380,7 @@ impl<'a> RefCodeGen<'a> {
     fn conversion(&self) -> proc_macro2::TokenStream {
         let ty = &self.ty;
         let field_name = self.field.name;
+        let pointer_reinterpret_safety_comment = self.pointer_reinterpret_safety_comment(false);
 
         let from_str = match &self.check_mode {
             CheckMode::None => quote! {
@@ -454,6 +455,24 @@ impl<'a> RefCodeGen<'a> {
                 #[inline]
                 fn from(r: &'a ::std::borrow::Cow<'b, #ty>) -> &'a #ty {
                     ::std::borrow::Borrow::borrow(r)
+                }
+            }
+
+            impl From<&'_ #ty> for ::std::rc::Rc<#ty> {
+                #[inline]
+                fn from(r: &'_ #ty) -> Self {
+                    #pointer_reinterpret_safety_comment
+                    let rc = ::std::rc::Rc::<str>::from(r.as_str());
+                    unsafe { ::std::rc::Rc::from_raw(::std::rc::Rc::into_raw(rc) as *const #ty) }
+                }
+            }
+
+            impl From<&'_ #ty> for ::std::sync::Arc<#ty> {
+                #[inline]
+                fn from(r: &'_ #ty) -> Self {
+                    #pointer_reinterpret_safety_comment
+                    let arc = ::std::sync::Arc::<str>::from(r.as_str());
+                    unsafe { ::std::sync::Arc::from_raw(::std::sync::Arc::into_raw(arc) as *const #ty) }
                 }
             }
         }

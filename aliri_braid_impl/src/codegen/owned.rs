@@ -160,14 +160,27 @@ impl<'a> OwnedCodeGen<'a> {
 
         let ref_type = self.ref_ty;
         let field = self.field.name;
+        let box_pointer_reinterpret_safety_comment = {
+            let doc = format!(
+                "SAFETY: `{ty}` is `#[repr(transparent)]` around a single `str` \
+                field, so a `*mut str` can be safely reinterpreted as a \
+                `*mut {ty}`",
+                ty = self.ref_ty.to_token_stream(),
+            );
+
+            quote! {
+                #[doc = #doc]
+                fn ptr_safety_comment() {}
+            }
+        };
+
 
         quote! {
             #[doc = #doc]
             #[inline]
             #[allow(unsafe_code)]
             pub fn into_boxed_ref(self) -> Box<#ref_type> {
-                // SAFETY: A Box<str> has the same representation as a Box<#ref_type>.
-                // Lifetimes are not implicated as the value on the heap is owned.
+                #box_pointer_reinterpret_safety_comment
                 let box_str = self.#field.into_boxed_str();
                 unsafe { ::std::boxed::Box::from_raw(::std::boxed::Box::into_raw(box_str) as *mut #ref_type) }
             }
