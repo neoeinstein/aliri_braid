@@ -13,6 +13,12 @@ mod tests {
     use std::borrow::Borrow;
 
     #[test]
+    fn constant_ref_works() {
+        const TEST_CONSTANT: &BasicExample = BasicExample::from_static("test");
+        assert_eq!(TEST_CONSTANT.as_str(), "test");
+    }
+
+    #[test]
     fn owned_works() {
         let x = BasicExampleBuf::from_static("Testing the Buffer");
         assert_eq!(x.as_str(), "Testing the Buffer");
