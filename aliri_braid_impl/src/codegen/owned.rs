@@ -174,7 +174,6 @@ impl<'a> OwnedCodeGen<'a> {
             }
         };
 
-
         quote! {
             #[doc = #doc]
             #[inline]
