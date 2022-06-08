@@ -39,6 +39,7 @@ pub fn debug_and_display_tests() {
     assert_eq!("\"One\"", format!("{:?}", y));
 }
 
+#[cfg_attr(miri, ignore = "takes too long on miri")]
 #[quickcheck]
 fn owned_and_borrowed_hashes_are_equivalent(s: String) -> bool {
     use std::collections::hash_map::DefaultHasher;
