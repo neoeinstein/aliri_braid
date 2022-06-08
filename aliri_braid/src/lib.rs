@@ -51,7 +51,7 @@
 //!#
 //! let owned = DatabaseName::new(String::from("mongo"));
 //! borrow_raw_str(owned.as_str());
-//! take_raw_string(owned.into_inner());
+//! take_raw_string(owned.into_string());
 //! ```
 //!
 //! By default, the name of the borrowed form will be the same as the owned form

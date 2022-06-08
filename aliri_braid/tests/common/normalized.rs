@@ -17,7 +17,7 @@ pub fn equality_tests() -> Result<(), Box<dyn std::error::Error>> {
     assert_eq!(y, &x);
     assert_eq!(*y, x);
 
-    assert_eq!("OneTwo", x.clone().into_inner());
+    assert_eq!("OneTwo", x.clone().into_string());
     let z = x.clone().into_boxed_ref();
     assert_eq!(y, &*z);
     assert_eq!(&*z, y);

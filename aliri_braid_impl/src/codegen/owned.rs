@@ -187,7 +187,7 @@ impl<'a> OwnedCodeGen<'a> {
         }
     }
 
-    fn make_into_inner(&self) -> proc_macro2::TokenStream {
+    fn make_into_string(&self) -> proc_macro2::TokenStream {
         let field = self.field.name;
         let wrapped_type = self.field.ty;
         let doc = format!(
@@ -198,7 +198,7 @@ impl<'a> OwnedCodeGen<'a> {
         quote! {
             #[doc = #doc]
             #[inline]
-            pub fn into_inner(self) -> #wrapped_type {
+            pub fn into_string(self) -> #wrapped_type {
                 self.#field
             }
         }
@@ -208,13 +208,13 @@ impl<'a> OwnedCodeGen<'a> {
         let name = self.ty;
         let constructor = self.constructor();
         let into_boxed_ref = self.make_into_boxed_ref();
-        let into_inner = self.make_into_inner();
+        let into_string = self.make_into_string();
 
         quote! {
             impl #name {
                 #constructor
                 #into_boxed_ref
-                #into_inner
+                #into_string
             }
         }
     }
