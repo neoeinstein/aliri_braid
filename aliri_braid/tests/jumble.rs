@@ -80,7 +80,7 @@ impl aliri_braid::Normalizer for NormalizedBuf {
     }
 }
 
-#[braid(clone = "none", debug = "none", display = "none")]
+#[braid(clone = "omit", debug = "omit", display = "omit")]
 pub struct CustomImpls;
 
 impl fmt::Debug for CustomImpls {

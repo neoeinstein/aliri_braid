@@ -25,7 +25,7 @@ impl std::str::FromStr for ImplOption {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "impl" => Ok(Self::Implement),
-            "none" => Ok(Self::Omit),
+            "omit" => Ok(Self::Omit),
             _ => Err("valid values are: `impl` or `omit`"),
         }
     }
@@ -67,7 +67,7 @@ impl std::str::FromStr for DelegatingImplOption {
         match s {
             "impl" => Ok(Self::Implement),
             "owned" => Ok(Self::OwnedOnly),
-            "none" => Ok(Self::Omit),
+            "omit" => Ok(Self::Omit),
             _ => Err("valid values are: `impl`, `owned`, or `omit`"),
         }
     }

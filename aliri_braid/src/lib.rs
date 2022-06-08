@@ -540,13 +540,13 @@
 //! ## Omitting `Clone`
 //!
 //! For some types, it may be desirable to prevent arbitrary cloning of a type. In that case,
-//! the `omit_clone` parameter can be used to prevent automatically deriving [`Clone`][std::clone::Clone].
+//! the `clone` parameter can be used to prevent automatically deriving [`Clone`][std::clone::Clone].
 //!
 //! ```
 //!# use aliri_braid::braid;
 //!# use static_assertions::assert_not_impl_any;
 //!#
-//! #[braid(clone = "none")]
+//! #[braid(clone = "omit")]
 //! pub struct Sensitive;
 //!
 //! assert_not_impl_any!(Sensitive: Clone);
@@ -557,16 +557,16 @@
 //! By default, the implementations of [`Display`][std::fmt::Display] and [`Debug`][std::fmt::Debug]
 //! provided by a braid delegate directly to the underlying [`String`] or [`str`] types. If a
 //! custom implementation is desired, the automatic derivation of these traits can be controlled
-//! by the `display_impl` and `debug_impl` parameters. Both of these parameters accept one of
-//! `auto`, `owned`, or `none`. By default, the `auto` derivation mode is used.
+//! by the `display` and `debug` parameters. Both of these parameters accept one of
+//! `impl`, `owned`, or `omit`. By default, the `impl` derivation mode is used.
 //!
 //! The modes have the following effects:
 //!
-//! * `auto`: Format the owned and reference type transparently as the underlying string (slice) type.
+//! * `impl`: Format the owned and reference type transparently as the underlying string (slice) type.
 //! * `owned`: Automatically provide an owned implementation that transparently delegates to the
 //!   implementation of the borrowed form. The consumer must provide their custom implementation on
 //!   the borrowed form.
-//! * `none`: No implementations are provided for the owned or borrowed forms. These must be
+//! * `omit`: No implementations are provided for the owned or borrowed forms. These must be
 //!   implemented by the consumer if they are desired.
 //!
 //! As an example:
@@ -575,7 +575,7 @@
 //!# use aliri_braid::braid;
 //! use std::fmt;
 //!#
-//! #[braid(clone = "none", display = "owned", debug = "owned")]
+//! #[braid(clone = "omit", display = "owned", debug = "owned")]
 //! pub struct Sensitive;
 //!
 //! impl fmt::Debug for SensitiveRef {
