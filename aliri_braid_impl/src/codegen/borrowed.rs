@@ -122,7 +122,7 @@ impl<'a> RefCodeGen<'a> {
                 #box_pointer_reinterpret_safety_comment
                 let raw = ::std::boxed::Box::into_raw(self);
                 let boxed = unsafe { ::std::boxed::Box::from_raw(raw as *mut str) };
-                #owned_ty::new(boxed.into_string())
+                #owned_ty::new(boxed.into())
             }
         }
     }
@@ -193,7 +193,7 @@ impl<'a> RefCodeGen<'a> {
                 #box_pointer_reinterpret_safety_comment
                 let raw = ::std::boxed::Box::into_raw(self);
                 let boxed = unsafe { ::std::boxed::Box::from_raw(raw as *mut str) };
-                let s = boxed.into_string();
+                let s = boxed.into();
                 #unchecked_safety_comment
                 unsafe { #owned_ty::new_unchecked(s) }
             }
@@ -319,7 +319,7 @@ impl<'a> RefCodeGen<'a> {
                 #box_pointer_reinterpret_safety_comment
                 let raw = ::std::boxed::Box::into_raw(self);
                 let boxed = unsafe { ::std::boxed::Box::from_raw(raw as *mut str) };
-                let s = boxed.into_string();
+                let s = boxed.into();
                 #unchecked_safety_comment
                 unsafe { #owned_ty::new_unchecked(s) }
             }
@@ -331,9 +331,9 @@ impl<'a> RefCodeGen<'a> {
         let owned_ty = self.owned_ty;
 
         let create = match self.field.name {
-            FieldName::Unnamed => quote! { #owned_ty(self.0.to_owned()) },
+            FieldName::Unnamed => quote! { #owned_ty(self.0.into()) },
             FieldName::Named(field_name) => {
-                quote! { #owned_ty { #field_name: self.#field_name.to_owned() } }
+                quote! { #owned_ty { #field_name: self.#field_name.into() } }
             }
         };
 

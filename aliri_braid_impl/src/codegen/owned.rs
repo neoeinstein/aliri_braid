@@ -74,7 +74,7 @@ impl<'a> OwnedCodeGen<'a> {
             #[doc = #doc_comment]
             #[inline]
             pub fn new(#param: #wrapped_type) -> Result<Self, #validator::Error> {
-                #validator::validate(#param.as_str())?;
+                #validator::validate(#param.as_ref())?;
                 Ok(#create)
             }
 
@@ -126,7 +126,7 @@ impl<'a> OwnedCodeGen<'a> {
             #[doc = #doc_comment]
             #[inline]
             pub fn new(#param: #field_ty) -> Result<Self, #normalizer::Error> {
-                let #param = #normalizer::normalize(#param.as_str())?.into_owned();
+                let #param = #normalizer::normalize(#param.as_ref())?.into_owned();
                 Ok(#create)
             }
 
@@ -180,7 +180,7 @@ impl<'a> OwnedCodeGen<'a> {
             #[allow(unsafe_code)]
             pub fn into_boxed_ref(self) -> Box<#ref_type> {
                 #box_pointer_reinterpret_safety_comment
-                let box_str = self.#field.into_boxed_str();
+                let box_str = ::std::string::String::from(self.#field).into_boxed_str();
                 unsafe { ::std::boxed::Box::from_raw(::std::boxed::Box::into_raw(box_str) as *mut #ref_type) }
             }
         }
@@ -327,7 +327,7 @@ impl<'a> OwnedCodeGen<'a> {
 
                 #[inline]
                 fn deref(&self) -> &Self::Target {
-                    #ref_ty::from_str(self.#field_name.as_str())
+                    #ref_ty::from_str(self.#field_name.as_ref())
                 }
             }
         }
@@ -385,7 +385,7 @@ impl<'a> OwnedCodeGen<'a> {
                 fn deref(&self) -> &Self::Target {
                     // SAFETY: At this point, we are certain that the underlying string
                     // slice passes validation, so the implicit contract is satisfied.
-                    unsafe { #ref_ty::from_str_unchecked(self.#field_name.as_str()) }
+                    unsafe { #ref_ty::from_str_unchecked(self.#field_name.as_ref()) }
                 }
             }
         }

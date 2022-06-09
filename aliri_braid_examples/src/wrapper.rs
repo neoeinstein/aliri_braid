@@ -16,3 +16,15 @@ use aliri_braid::braid;
     ref_doc = "A borrowed reference to a basic string slice wrapper"
 )]
 pub struct UsernameBuf;
+
+// This doesn't work right now as `ByteString` doesn't implement `From<Box<str>>` or `Into<String>`.
+//
+// /// A basic example of a wrapper around a [`bytestring::ByteString`]
+// ///
+// /// This type ends in _Buf_, so the borrowed form of this type
+// /// will be named [`BytesUsername`].
+// #[braid(
+//     serde,
+//     ref_doc = "A borrowed reference to a basic string slice wrapper"
+// )]
+// pub struct BytesUsernameBuf(bytestring::ByteString);
