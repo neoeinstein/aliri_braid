@@ -18,6 +18,7 @@ use aliri_braid::braid;
 pub struct UsernameBuf;
 
 // This doesn't work right now as `ByteString` doesn't implement `From<Box<str>>` or `Into<String>`.
+// See https://github.com/actix/actix-net/pull/458
 //
 // /// A basic example of a wrapper around a [`bytestring::ByteString`]
 // ///
