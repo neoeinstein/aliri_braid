@@ -495,6 +495,7 @@ impl<'a> RefCodeGen<'a> {
         let conversion = self.conversion();
         let debug = self.impls.debug.to_borrowed_impl(self);
         let display = self.impls.display.to_borrowed_impl(self);
+        let ord = self.impls.ord.to_borrowed_impl(self);
         let serde = self.impls.serde.to_borrowed_impl(self);
 
         let ref_doc: proc_macro2::TokenStream =
@@ -524,7 +525,8 @@ impl<'a> RefCodeGen<'a> {
 
         quote! {
             #[repr(transparent)]
-            #[derive(Hash, PartialEq, Eq, PartialOrd, Ord)]
+            #[derive(Hash, PartialEq, Eq)]
+            #ord
             #ref_doc
             #ref_attrs
             #common_attrs

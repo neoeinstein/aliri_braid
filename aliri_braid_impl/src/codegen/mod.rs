@@ -119,6 +119,12 @@ impl<'a> Params<'a> {
                         .map_err(|e| syn::Error::new_spanned(&arg, e.to_owned()))?
                         .into();
                 }
+                syn::NestedMeta::Meta(syn::Meta::NameValue(nv)) if nv.path == symbol::ORD => {
+                    params.impls.ord = parse_lit_into_string(symbol::ORD, &nv.lit)?
+                        .parse::<DelegatingImplOption>()
+                        .map_err(|e| syn::Error::new_spanned(&arg, e.to_owned()))?
+                        .into();
+                }
                 syn::NestedMeta::Meta(syn::Meta::NameValue(nv)) if nv.path == symbol::CLONE => {
                     params.impls.clone = parse_lit_into_string(symbol::CLONE, &nv.lit)?
                         .parse::<ImplOption>()

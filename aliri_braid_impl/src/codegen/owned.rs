@@ -489,6 +489,7 @@ impl<'a> OwnedCodeGen<'a> {
         let clone = self.impls.clone.to_owned_impl(self);
         let display = self.impls.display.to_owned_impl(self);
         let debug = self.impls.debug.to_owned_impl(self);
+        let ord = self.impls.ord.to_owned_impl(self);
         let serde = self.impls.serde.to_owned_impl(self);
 
         let owned_attrs: proc_macro2::TokenStream =
@@ -499,7 +500,7 @@ impl<'a> OwnedCodeGen<'a> {
 
         quote! {
             #clone
-            #[derive(Hash, PartialEq, Eq, PartialOrd, Ord)]
+            #[derive(Hash, PartialEq, Eq)]
             #[repr(transparent)]
             #owned_attrs
             #body
@@ -508,6 +509,7 @@ impl<'a> OwnedCodeGen<'a> {
             #conversion
             #debug
             #display
+            #ord
             #serde
         }
     }

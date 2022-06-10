@@ -78,6 +78,7 @@ pub struct Impls {
     pub clone: ImplClone,
     pub debug: ImplDebug,
     pub display: ImplDisplay,
+    pub ord: ImplOrd,
     pub serde: ImplSerde,
 }
 
@@ -206,6 +207,48 @@ impl ToImpl for ImplDebug {
                 }
             }
         })
+    }
+}
+
+#[derive(Debug)]
+pub struct ImplOrd(DelegatingImplOption);
+
+impl Default for ImplOrd {
+    fn default() -> Self {
+        Self(DelegatingImplOption::Implement)
+    }
+}
+
+impl From<DelegatingImplOption> for ImplOrd {
+    fn from(opt: DelegatingImplOption) -> Self {
+        Self(opt)
+    }
+}
+
+impl ToImpl for ImplOrd {
+    fn to_owned_impl(&self, gen: &OwnedCodeGen) -> Option<proc_macro2::TokenStream> {
+        let ty = &gen.ty;
+        let field_name = gen.field.name;
+        let core = gen.std_lib.core();
+        self.0.map_owned(|| quote! {
+            impl ::#core::cmp::Ord for #ty {
+                #[inline]
+                fn cmp(&self, other: &Self) -> ::#core::cmp::Ordering {
+                    ::#core::cmp::Ord::cmp(&self.#field_name, &other.#field_name)
+                }
+            }
+
+            impl ::#core::cmp::PartialOrd for #ty {
+                #[inline]
+                fn partial_cmp(&self, other: &Self) -> ::#core::option::Option<::#core::cmp::Ordering> {
+                    ::#core::cmp::PartialOrd::partial_cmp(&self.#field_name, &other.#field_name)
+                }
+            }
+        })
+    }
+
+    fn to_borrowed_impl(&self, _gen: &RefCodeGen) -> Option<proc_macro2::TokenStream> {
+        self.0.map_ref(|| quote! { #[derive(PartialOrd, Ord)] })
     }
 }
 
