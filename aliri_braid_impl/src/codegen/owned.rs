@@ -83,6 +83,7 @@ impl<'a> OwnedCodeGen<'a> {
             }
 
             #[doc = #doc_comment_unsafe]
+            #[allow(unsafe_code)]
             #[inline]
             pub const unsafe fn new_unchecked(#param: #wrapped_type) -> Self {
                 #create
@@ -136,6 +137,7 @@ impl<'a> OwnedCodeGen<'a> {
             }
 
             #[doc = #doc_comment_unsafe]
+            #[allow(unsafe_code)]
             #[inline]
             pub const unsafe fn new_unchecked(#param: #field_ty) -> Self {
                 #create
@@ -182,8 +184,8 @@ impl<'a> OwnedCodeGen<'a> {
 
         quote! {
             #[doc = #doc]
-            #[inline]
             #[allow(unsafe_code)]
+            #[inline]
             pub fn into_boxed_ref(self) -> ::#alloc::boxed::Box<#ref_type> {
                 #box_pointer_reinterpret_safety_comment
                 let box_str = ::#alloc::string::String::from(self.#field).into_boxed_str();
@@ -409,8 +411,8 @@ impl<'a> OwnedCodeGen<'a> {
             impl ::#core::ops::Deref for #ty {
                 type Target = #ref_ty;
 
-                #[inline]
                 #[allow(unsafe_code)]
+                #[inline]
                 fn deref(&self) -> &Self::Target {
                     #unchecked_safety_comment
                     unsafe { #ref_ty::from_str_unchecked(::#core::convert::AsRef::as_ref(&self.#field_name)) }
@@ -461,8 +463,8 @@ impl<'a> OwnedCodeGen<'a> {
             impl ::#core::ops::Deref for #ty {
                 type Target = #ref_ty;
 
-                #[inline]
                 #[allow(unsafe_code)]
+                #[inline]
                 fn deref(&self) -> &Self::Target {
                     #unchecked_safety_comment
                     unsafe { #ref_ty::from_str_unchecked(&self.#field_name) }

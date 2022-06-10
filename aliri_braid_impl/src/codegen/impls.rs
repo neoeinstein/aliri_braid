@@ -73,6 +73,15 @@ impl std::str::FromStr for DelegatingImplOption {
     }
 }
 
+impl From<ImplOption> for DelegatingImplOption {
+    fn from(opt: ImplOption) -> Self {
+        match opt {
+            ImplOption::Implement => Self::Implement,
+            ImplOption::Omit => Self::Omit,
+        }
+    }
+}
+
 #[derive(Debug, Default)]
 pub struct Impls {
     pub clone: ImplClone,
@@ -297,21 +306,22 @@ impl ToImpl for ImplSerde {
     fn to_borrowed_impl(&self, gen: &RefCodeGen) -> Option<proc_macro2::TokenStream> {
         self.0.map(|| {
             let ty = &gen.ty;
-            let owned_ty = gen.owned_ty;
             let check_mode = gen.check_mode;
             let core = gen.std_lib.core();
             let alloc = gen.std_lib.alloc();
 
             let handle_failure = check_mode.serde_err_handler();
 
-            let deserialize_boxed = quote! {
-                impl<'de> ::serde::Deserialize<'de> for ::#alloc::boxed::Box<#ty> {
-                    fn deserialize<D: ::serde::Deserializer<'de>>(deserializer: D) -> ::#core::result::Result<Self, D::Error> {
-                        let owned = <#owned_ty as ::serde::Deserialize<'de>>::deserialize(deserializer)?;
-                        ::#core::result::Result::Ok(owned.into_boxed_ref())
+            let deserialize_boxed = gen.owned_ty.map(|owned_ty| {
+                quote! {
+                    impl<'de> ::serde::Deserialize<'de> for ::#alloc::boxed::Box<#ty> {
+                        fn deserialize<D: ::serde::Deserializer<'de>>(deserializer: D) -> ::#core::result::Result<Self, D::Error> {
+                            let owned = <#owned_ty as ::serde::Deserialize<'de>>::deserialize(deserializer)?;
+                            ::#core::result::Result::Ok(owned.into_boxed_ref())
+                        }
                     }
                 }
-            };
+            });
 
             let deserialize = if matches!(check_mode, CheckMode::Normalize(_)) {
                 let deserialize_doc = format!(
@@ -321,7 +331,7 @@ impl ToImpl for ImplSerde {
                     If values may require normalization, then deserialized as [`{owned}`] or \
                     [`Cow`][{alloc}::borrow::Cow]`<{ty}>` instead.",
                     ty = ty.to_token_stream(),
-                    owned = owned_ty.to_token_stream(),
+                    owned = gen.owned_ty.expect("normalize not available if no owned").to_token_stream(),
                 );
 
                 quote! {

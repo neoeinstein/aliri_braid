@@ -215,6 +215,131 @@ impl<'a> Params<'a> {
     }
 }
 
+pub struct ParamsRef {
+    std_lib: StdLib,
+    check_mode: IndefiniteCheckMode,
+    impls: Impls,
+}
+
+impl Default for ParamsRef {
+    fn default() -> Self {
+        Self {
+            std_lib: StdLib::default(),
+            check_mode: IndefiniteCheckMode::None,
+            impls: Impls::default(),
+        }
+    }
+}
+
+impl ParamsRef {
+    pub fn parse(args: &syn::AttributeArgs) -> Result<Self, syn::Error> {
+        let mut params = Self::default();
+
+        for arg in args {
+            match arg {
+                syn::NestedMeta::Meta(syn::Meta::NameValue(nv)) if nv.path == symbol::VALIDATOR => {
+                    let validator = parse_lit_into_type(symbol::VALIDATOR, &nv.lit)?;
+                    params
+                        .check_mode
+                        .try_set_validator(Some(validator))
+                        .map_err(|s| syn::Error::new_spanned(arg, s))?;
+                }
+                syn::NestedMeta::Meta(syn::Meta::NameValue(nv)) if nv.path == symbol::DEBUG => {
+                    params.impls.debug = parse_lit_into_string(symbol::DEBUG, &nv.lit)?
+                        .parse::<ImplOption>()
+                        .map_err(|e| syn::Error::new_spanned(&arg, e.to_owned()))
+                        .map(DelegatingImplOption::from)?
+                        .into();
+                }
+                syn::NestedMeta::Meta(syn::Meta::NameValue(nv)) if nv.path == symbol::DISPLAY => {
+                    params.impls.display = parse_lit_into_string(symbol::DISPLAY, &nv.lit)?
+                        .parse::<ImplOption>()
+                        .map_err(|e| syn::Error::new_spanned(&arg, e.to_owned()))
+                        .map(DelegatingImplOption::from)?
+                        .into();
+                }
+                syn::NestedMeta::Meta(syn::Meta::NameValue(nv)) if nv.path == symbol::ORD => {
+                    params.impls.ord = parse_lit_into_string(symbol::ORD, &nv.lit)?
+                        .parse::<ImplOption>()
+                        .map_err(|e| syn::Error::new_spanned(&arg, e.to_owned()))
+                        .map(DelegatingImplOption::from)?
+                        .into();
+                }
+                syn::NestedMeta::Meta(syn::Meta::NameValue(nv)) if nv.path == symbol::SERDE => {
+                    params.impls.serde = parse_lit_into_string(symbol::SERDE, &nv.lit)?
+                        .parse::<ImplOption>()
+                        .map_err(|e| syn::Error::new_spanned(&arg, e.to_owned()))?
+                        .into();
+                }
+                syn::NestedMeta::Meta(syn::Meta::Path(p)) if p == symbol::SERDE => {
+                    params.impls.serde = ImplOption::Implement.into();
+                }
+                syn::NestedMeta::Meta(syn::Meta::Path(p)) if p == symbol::VALIDATOR => {
+                    params
+                        .check_mode
+                        .try_set_validator(None)
+                        .map_err(|s| syn::Error::new_spanned(arg, s))?;
+                }
+                syn::NestedMeta::Meta(syn::Meta::Path(p)) if p == symbol::NO_STD => {
+                    params.std_lib = StdLib::no_std(p.span());
+                }
+                syn::NestedMeta::Meta(
+                    syn::Meta::Path(ref path)
+                    | syn::Meta::NameValue(syn::MetaNameValue { ref path, .. }),
+                ) => {
+                    return Err(syn::Error::new_spanned(
+                        &arg,
+                        format!("unsupported argument `{}`", path.to_token_stream()),
+                    ));
+                }
+                _ => {
+                    return Err(syn::Error::new_spanned(
+                        &arg,
+                        "unsupported argument".to_string(),
+                    ));
+                }
+            }
+        }
+
+        Ok(params)
+    }
+
+    pub fn build(self, body: &mut syn::ItemStruct) -> Result<proc_macro2::TokenStream, syn::Error> {
+        let ParamsRef {
+            std_lib,
+            check_mode,
+            impls,
+        } = self;
+
+        create_ref_field_if_none(&mut body.fields);
+        let (wrapped_type, field_ident, field_attrs) = get_field_info(&body.fields)?;
+        let ref_ty = &body.ident;
+        let check_mode = check_mode.infer_validator_if_missing(ref_ty);
+        let field = Field {
+            attrs: field_attrs,
+            name: field_ident.map_or(FieldName::Unnamed, FieldName::Named),
+            ty: wrapped_type,
+        };
+
+        let code_gen = RefCodeGen {
+            doc: &[],
+            common_attrs: &body.attrs,
+            attrs: &syn::punctuated::Punctuated::default(),
+            vis: &body.vis,
+            ty: &syn::Type::Verbatim(body.ident.to_token_stream()),
+            ident: body.ident.clone(),
+            field,
+            check_mode: &check_mode,
+            owned_ty: None,
+            std_lib: &std_lib,
+            impls: &impls,
+        }
+        .tokens();
+
+        Ok(code_gen)
+    }
+}
+
 pub struct CodeGen<'a> {
     check_mode: CheckMode,
     body: &'a syn::ItemStruct,
@@ -268,7 +393,7 @@ impl<'a> CodeGen<'a> {
                 &self.ref_ty.to_token_stream().to_string(),
                 self.ref_ty.span(),
             ),
-            owned_ty: &self.body.ident,
+            owned_ty: Some(&self.body.ident),
             std_lib: &self.std_lib,
             impls: &self.impls,
         }
@@ -299,6 +424,25 @@ fn create_field_if_none(fields: &mut syn::Fields) {
             ident: None,
             ty: syn::Type::Verbatim(
                 syn::Ident::new("String", proc_macro2::Span::call_site()).into_token_stream(),
+            ),
+        };
+
+        *fields = syn::Fields::Unnamed(syn::FieldsUnnamed {
+            paren_token: syn::token::Paren::default(),
+            unnamed: std::iter::once(field).collect(),
+        });
+    }
+}
+
+fn create_ref_field_if_none(fields: &mut syn::Fields) {
+    if fields.is_empty() {
+        let field = syn::Field {
+            vis: syn::Visibility::Inherited,
+            attrs: Vec::new(),
+            colon_token: None,
+            ident: None,
+            ty: syn::Type::Verbatim(
+                syn::Ident::new("str", proc_macro2::Span::call_site()).into_token_stream(),
             ),
         };
 

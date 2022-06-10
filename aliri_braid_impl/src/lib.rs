@@ -21,7 +21,7 @@ extern crate proc_macro;
 
 mod codegen;
 
-use codegen::Params;
+use codegen::{Params, ParamsRef};
 use proc_macro::TokenStream;
 use syn::parse_macro_input;
 
@@ -63,7 +63,7 @@ use syn::parse_macro_input;
 /// * `serde = "impl|omit"` (default `omit`)
 ///   * Adds serialize and deserialize implementations
 /// * `no_std`
-///   * Generated no_std-compatible braid (still requires `alloc`)
+///   * Generates no_std-compatible braid (still requires `alloc`)
 #[proc_macro_attribute]
 pub fn braid(args: TokenStream, input: TokenStream) -> TokenStream {
     let args = parse_macro_input!(args as syn::AttributeArgs);
@@ -72,6 +72,36 @@ pub fn braid(args: TokenStream, input: TokenStream) -> TokenStream {
     Params::parse(&args)
         .and_then(|p| p.build(&mut body))
         .map_or_else(syn::Error::into_compile_error, |codegen| codegen.generate())
+        .into()
+}
+
+/// Constructs a ref-only braid
+///
+/// Available options:
+/// * either `validator [ = "Type" ]`
+///   * Indicates the type is validated. If not specified,
+///     it is assumed that the braid implements the relevant trait itself.
+/// * `debug = "impl|omit"` (default `impl`)
+///   * Changes how automatic implementations of the `Debug` trait are provided.
+///     If `omit`, then no implementations of `Debug` will be provided.
+/// * `display = "impl|omit"` (default `impl`)
+///   * Changes how automatic implementations of the `Display` trait are provided.
+///     If `omit`, then no implementations of `Display` will be provided.
+/// * `ord = "impl|omit"` (default `impl`)
+///   * Changes how automatic implementations of the `PartialOrd` and `Ord` traits are provided.
+///     If `omit`, then no implementations will be provided.
+/// * `serde = "impl|omit"` (default `omit`)
+///   * Adds serialize and deserialize implementations
+/// * `no_std`
+///   * Generates a no_std and no-alloc-compatible braid
+#[proc_macro_attribute]
+pub fn braid_ref(args: TokenStream, input: TokenStream) -> TokenStream {
+    let args = parse_macro_input!(args as syn::AttributeArgs);
+    let mut body = parse_macro_input!(input as syn::ItemStruct);
+
+    ParamsRef::parse(&args)
+        .and_then(|p| p.build(&mut body))
+        .unwrap_or_else(syn::Error::into_compile_error)
         .into()
 }
 

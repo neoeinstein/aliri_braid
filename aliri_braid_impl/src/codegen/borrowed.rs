@@ -11,7 +11,7 @@ pub struct RefCodeGen<'a> {
     pub ident: syn::Ident,
     pub field: Field<'a>,
     pub check_mode: &'a CheckMode,
-    pub owned_ty: &'a syn::Ident,
+    pub owned_ty: Option<&'a syn::Ident>,
     pub std_lib: &'a StdLib,
     pub impls: &'a Impls,
 }
@@ -77,7 +77,6 @@ impl<'a> RefCodeGen<'a> {
 
     fn infallible_inherent(&self) -> proc_macro2::TokenStream {
         let ty = &self.ty;
-        let owned_ty = self.owned_ty;
         let core = self.std_lib.core();
         let alloc = self.std_lib.alloc();
 
@@ -91,13 +90,29 @@ impl<'a> RefCodeGen<'a> {
             self.ident
         );
 
-        let into_owned_doc = format!(
-            "Converts a [`Box<{}>`] into a [`{}`] without copying or allocating",
-            self.ident, self.owned_ty,
-        );
-
         let pointer_reinterpret_safety_comment = self.pointer_reinterpret_safety_comment(false);
-        let box_pointer_reinterpret_safety_comment = self.pointer_reinterpret_safety_comment(true);
+
+        let into_owned = self.owned_ty.map(|owned_ty| {
+            let into_owned_doc = format!(
+                "Converts a [`Box<{}>`] into a [`{}`] without copying or allocating",
+                self.ident, owned_ty,
+            );
+
+            let box_pointer_reinterpret_safety_comment =
+                self.pointer_reinterpret_safety_comment(true);
+
+            quote! {
+                #[allow(unsafe_code)]
+                #[inline]
+                #[doc = #into_owned_doc]
+                pub fn into_owned(self: ::#alloc::boxed::Box<#ty>) -> #owned_ty {
+                    #box_pointer_reinterpret_safety_comment
+                    let raw = ::#alloc::boxed::Box::into_raw(self);
+                    let boxed = unsafe { ::#alloc::boxed::Box::from_raw(raw as *mut str) };
+                    #owned_ty::new(::#core::convert::From::from(boxed))
+                }
+            }
+        });
 
         quote! {
             #[allow(unsafe_code)]
@@ -118,15 +133,7 @@ impl<'a> RefCodeGen<'a> {
                 Self::from_str(raw)
             }
 
-            #[allow(unsafe_code)]
-            #[inline]
-            #[doc = #into_owned_doc]
-            pub fn into_owned(self: ::#alloc::boxed::Box<#ty>) -> #owned_ty {
-                #box_pointer_reinterpret_safety_comment
-                let raw = ::#alloc::boxed::Box::into_raw(self);
-                let boxed = unsafe { ::#alloc::boxed::Box::from_raw(raw as *mut str) };
-                #owned_ty::new(::#core::convert::From::from(boxed))
-            }
+            #into_owned
         }
     }
 
@@ -144,18 +151,34 @@ impl<'a> RefCodeGen<'a> {
             self.ident,
         );
 
-        let into_owned_doc = format!(
-            "Converts a [`Box<{}>`] into a [`{}`] without copying or allocating",
-            self.ident, self.owned_ty,
-        );
-
         let ty = &self.ty;
-        let owned_ty = self.owned_ty;
         let core = self.std_lib.core();
         let alloc = self.std_lib.alloc();
         let unchecked_safety_comment = Self::unchecked_safety_comment(false);
         let pointer_reinterpret_safety_comment = self.pointer_reinterpret_safety_comment(false);
-        let box_pointer_reinterpret_safety_comment = self.pointer_reinterpret_safety_comment(true);
+        let into_owned = self.owned_ty.map(|owned_ty| {
+            let into_owned_doc = format!(
+                "Converts a [`Box<{}>`] into a [`{}`] without copying or allocating",
+                self.ident, owned_ty,
+            );
+
+            let box_pointer_reinterpret_safety_comment =
+                self.pointer_reinterpret_safety_comment(true);
+
+            quote! {
+                #[allow(unsafe_code)]
+                #[inline]
+                #[doc = #into_owned_doc]
+                pub fn into_owned(self: ::#alloc::boxed::Box<#ty>) -> #owned_ty {
+                    #box_pointer_reinterpret_safety_comment
+                    let raw = ::#alloc::boxed::Box::into_raw(self);
+                    let boxed = unsafe { ::#alloc::boxed::Box::from_raw(raw as *mut str) };
+                    let s = ::#core::convert::From::from(boxed);
+                    #unchecked_safety_comment
+                    unsafe { #owned_ty::new_unchecked(s) }
+                }
+            }
+        });
 
         let validator = crate::as_validator(validator);
 
@@ -173,11 +196,8 @@ impl<'a> RefCodeGen<'a> {
             #[inline]
             #[doc = #doc_comment_unsafe]
             pub const unsafe fn from_str_unchecked(raw: &str) -> &Self {
-                let ptr: *const str = raw;
                 #pointer_reinterpret_safety_comment
-                unsafe {
-                    &*(ptr as *const Self)
-                }
+                &*(raw as *const str as *const Self)
             }
 
             #[inline]
@@ -191,17 +211,7 @@ impl<'a> RefCodeGen<'a> {
                 Self::from_str(raw).expect(concat!("invalid ", stringify!(#ty)))
             }
 
-            #[allow(unsafe_code)]
-            #[inline]
-            #[doc = #into_owned_doc]
-            pub fn into_owned(self: ::#alloc::boxed::Box<#ty>) -> #owned_ty {
-                #box_pointer_reinterpret_safety_comment
-                let raw = ::#alloc::boxed::Box::into_raw(self);
-                let boxed = unsafe { ::#alloc::boxed::Box::from_raw(raw as *mut str) };
-                let s = ::#core::convert::From::from(boxed);
-                #unchecked_safety_comment
-                unsafe { #owned_ty::new_unchecked(s) }
-            }
+            #into_owned
         }
     }
 
@@ -246,49 +256,65 @@ impl<'a> RefCodeGen<'a> {
             normalizer.to_token_stream(),
         );
 
-        let into_owned_doc = format!(
-            "Converts a [`Box<{}>`] into a [`{}`] without copying or allocating",
-            self.ident,
-            self.owned_ty.to_token_stream(),
-        );
-
         let ty = &self.ty;
-        let owned_ty = self.owned_ty;
         let core = self.std_lib.core();
         let alloc = self.std_lib.alloc();
         let unchecked_safety_comment = Self::unchecked_safety_comment(true);
         let pointer_reinterpret_safety_comment = self.pointer_reinterpret_safety_comment(false);
-        let box_pointer_reinterpret_safety_comment = self.pointer_reinterpret_safety_comment(true);
 
         let validator = crate::as_validator(normalizer);
         let normalizer = crate::as_normalizer(normalizer);
 
-        quote! {
-            #[allow(unsafe_code)]
-            #[inline]
-            #[doc = #doc_comment]
-            pub fn from_str(raw: &str) -> ::#core::result::Result<::#alloc::borrow::Cow<Self>, #normalizer::Error> {
-                let cow = #normalizer::normalize(raw)?;
-                #unchecked_safety_comment
-                ::#core::result::Result::Ok(unsafe { Self::from_cow_str_unchecked(cow) })
-            }
+        let into_owned = self.owned_ty.map(|owned_ty| {
+            let into_owned_doc = format!(
+                "Converts a [`Box<{}>`] into a [`{}`] without copying or allocating",
+                self.ident,
+                owned_ty,
+            );
 
-            #[allow(unsafe_code)]
-            #[inline]
-            #[doc = #doc_comment_cow_unsafe]
-            unsafe fn from_cow_str_unchecked(cow: ::#alloc::borrow::Cow<str>) -> ::#alloc::borrow::Cow<Self> {
-                match cow {
-                    ::#alloc::borrow::Cow::Borrowed(raw) => {
-                        let value = Self::from_str_unchecked(raw);
-                        ::#alloc::borrow::Cow::Borrowed(value)
-                    }
-                    ::#alloc::borrow::Cow::Owned(normalized) => {
-                        let value = #owned_ty::new_unchecked(normalized);
-                        ::#alloc::borrow::Cow::Owned(value)
+            let box_pointer_reinterpret_safety_comment = self.pointer_reinterpret_safety_comment(true);
+
+            quote! {
+                #[allow(unsafe_code)]
+                #[inline]
+                #[doc = #doc_comment]
+                pub fn from_str(raw: &str) -> ::#core::result::Result<::#alloc::borrow::Cow<Self>, #normalizer::Error> {
+                    let cow = #normalizer::normalize(raw)?;
+                    #unchecked_safety_comment
+                    ::#core::result::Result::Ok(unsafe { Self::from_cow_str_unchecked(cow) })
+                }
+
+                #[allow(unsafe_code)]
+                #[inline]
+                #[doc = #doc_comment_cow_unsafe]
+                unsafe fn from_cow_str_unchecked(cow: ::#alloc::borrow::Cow<str>) -> ::#alloc::borrow::Cow<Self> {
+                    match cow {
+                        ::#alloc::borrow::Cow::Borrowed(raw) => {
+                            let value = Self::from_str_unchecked(raw);
+                            ::#alloc::borrow::Cow::Borrowed(value)
+                        }
+                        ::#alloc::borrow::Cow::Owned(normalized) => {
+                            let value = #owned_ty::new_unchecked(normalized);
+                            ::#alloc::borrow::Cow::Owned(value)
+                        }
                     }
                 }
-            }
 
+                #[allow(unsafe_code)]
+                #[inline]
+                #[doc = #into_owned_doc]
+                pub fn into_owned(self: ::#alloc::boxed::Box<#ty>) -> #owned_ty {
+                    #box_pointer_reinterpret_safety_comment
+                    let raw = ::#alloc::boxed::Box::into_raw(self);
+                    let boxed = unsafe { ::#alloc::boxed::Box::from_raw(raw as *mut str) };
+                    let s = ::#core::convert::From::from(boxed);
+                    #unchecked_safety_comment
+                    unsafe { #owned_ty::new_unchecked(s) }
+                }
+            }
+        });
+
+        quote! {
             #[allow(unsafe_code)]
             #[inline]
             #[doc = #doc_comment_norm]
@@ -302,12 +328,10 @@ impl<'a> RefCodeGen<'a> {
             #[inline]
             #[doc = #doc_comment_unsafe]
             pub const unsafe fn from_str_unchecked(raw: &str) -> &Self {
-                let ptr: *const str = raw;
                 #pointer_reinterpret_safety_comment
-                unsafe {
-                    &*(ptr as *const Self)
-                }
+                &*(raw as *const str as *const Self)
             }
+
             #[inline]
             #[doc = #doc_comment]
             #[doc = ""]
@@ -319,71 +343,62 @@ impl<'a> RefCodeGen<'a> {
                 Self::from_normalized_str(raw).expect(concat!("non-normalized ", stringify!(#ty)))
             }
 
-            #[allow(unsafe_code)]
-            #[inline]
-            #[doc = #into_owned_doc]
-            pub fn into_owned(self: ::#alloc::boxed::Box<#ty>) -> #owned_ty {
-                #box_pointer_reinterpret_safety_comment
-                let raw = ::#alloc::boxed::Box::into_raw(self);
-                let boxed = unsafe { ::#alloc::boxed::Box::from_raw(raw as *mut str) };
-                let s = ::#core::convert::From::from(boxed);
-                #unchecked_safety_comment
-                unsafe { #owned_ty::new_unchecked(s) }
-            }
+            #into_owned
         }
     }
 
-    fn comparison(&self) -> proc_macro2::TokenStream {
-        let ty = &self.ty;
-        let owned_ty = self.owned_ty;
-        let core = self.std_lib.core();
-        let alloc = self.std_lib.alloc();
+    fn comparison(&self) -> Option<proc_macro2::TokenStream> {
+        self.owned_ty.map(|owned_ty| {
+            let ty = &self.ty;
+            let core = self.std_lib.core();
+            let alloc = self.std_lib.alloc();
 
-        let create = match self.field.name {
-            FieldName::Unnamed => quote! { #owned_ty(self.0.into()) },
-            FieldName::Named(field_name) => {
-                quote! { #owned_ty { #field_name: self.#field_name.into() } }
-            }
-        };
+            let create = match self.field.name {
+                FieldName::Unnamed => quote! { #owned_ty(self.0.into()) },
+                FieldName::Named(field_name) => {
+                    quote! { #owned_ty { #field_name: self.#field_name.into() } }
+                }
+            };
 
-        quote! {
-            impl ::#alloc::borrow::ToOwned for #ty {
-                type Owned = #owned_ty;
+            quote! {
+                impl ::#alloc::borrow::ToOwned for #ty {
+                    type Owned = #owned_ty;
 
-                #[inline]
-                fn to_owned(&self) -> Self::Owned {
-                    #create
+                    #[inline]
+                    fn to_owned(&self) -> Self::Owned {
+                        #create
+                    }
+                }
+
+                impl ::#core::cmp::PartialEq<#ty> for #owned_ty {
+                    #[inline]
+                    fn eq(&self, other: &#ty) -> bool {
+                        self.as_str() == other.as_str()
+                    }
+                }
+
+                impl ::#core::cmp::PartialEq<#owned_ty> for #ty {
+                    #[inline]
+                    fn eq(&self, other: &#owned_ty) -> bool {
+                        self.as_str() == other.as_str()
+                    }
+                }
+
+                impl ::#core::cmp::PartialEq<&'_ #ty> for #owned_ty {
+                    #[inline]
+                    fn eq(&self, other: &&#ty) -> bool {
+                        self.as_str() == other.as_str()
+                    }
+                }
+
+                impl ::#core::cmp::PartialEq<#owned_ty> for &'_ #ty {
+                    #[inline]
+                    fn eq(&self, other: &#owned_ty) -> bool {
+                        self.as_str() == other.as_str()
+                    }
                 }
             }
-
-            impl ::#core::cmp::PartialEq<#ty> for #owned_ty {
-                #[inline]
-                fn eq(&self, other: &#ty) -> bool {
-                    self.as_str() == other.as_str()
-                }
-            }
-
-            impl ::#core::cmp::PartialEq<#owned_ty> for #ty {
-                #[inline]
-                fn eq(&self, other: &#owned_ty) -> bool {
-                    self.as_str() == other.as_str()
-                }
-            }
-
-            impl ::#core::cmp::PartialEq<&'_ #ty> for #owned_ty {
-                #[inline]
-                fn eq(&self, other: &&#ty) -> bool {
-                    self.as_str() == other.as_str()
-                }
-            }
-
-            impl ::#core::cmp::PartialEq<#owned_ty> for &'_ #ty {
-                #[inline]
-                fn eq(&self, other: &#owned_ty) -> bool {
-                    self.as_str() == other.as_str()
-                }
-            }
-        }
+        })
     }
 
     fn conversion(&self) -> proc_macro2::TokenStream {
@@ -444,6 +459,45 @@ impl<'a> RefCodeGen<'a> {
             }
         };
 
+        let alloc_from = self.owned_ty.is_some().then(|| {
+            quote!{
+                impl<'a> ::#core::convert::From<&'a #ty> for ::#alloc::borrow::Cow<'a, #ty> {
+                    #[inline]
+                    fn from(r: &'a #ty) -> Self {
+                        ::#alloc::borrow::Cow::Borrowed(r)
+                    }
+                }
+
+
+                impl<'a, 'b: 'a> ::#core::convert::From<&'a ::#alloc::borrow::Cow<'b, #ty>> for &'a #ty {
+                    #[inline]
+                    fn from(r: &'a ::#alloc::borrow::Cow<'b, #ty>) -> &'a #ty {
+                        ::#core::borrow::Borrow::borrow(r)
+                    }
+                }
+
+                impl ::#core::convert::From<&'_ #ty> for ::#alloc::rc::Rc<#ty> {
+                    #[allow(unsafe_code)]
+                    #[inline]
+                    fn from(r: &'_ #ty) -> Self {
+                        #pointer_reinterpret_safety_comment
+                        let rc = ::#alloc::rc::Rc::<str>::from(r.as_str());
+                        unsafe { ::#alloc::rc::Rc::from_raw(::#alloc::rc::Rc::into_raw(rc) as *const #ty) }
+                    }
+                }
+
+                impl ::#core::convert::From<&'_ #ty> for ::#alloc::sync::Arc<#ty> {
+                    #[allow(unsafe_code)]
+                    #[inline]
+                    fn from(r: &'_ #ty) -> Self {
+                        #pointer_reinterpret_safety_comment
+                        let arc = ::#alloc::sync::Arc::<str>::from(r.as_str());
+                        unsafe { ::#alloc::sync::Arc::from_raw(::#alloc::sync::Arc::into_raw(arc) as *const #ty) }
+                    }
+                }
+            }
+        });
+
         quote! {
             #from_str
 
@@ -454,38 +508,7 @@ impl<'a> RefCodeGen<'a> {
                 }
             }
 
-            impl<'a> ::#core::convert::From<&'a #ty> for ::#alloc::borrow::Cow<'a, #ty> {
-                #[inline]
-                fn from(r: &'a #ty) -> Self {
-                    ::#alloc::borrow::Cow::Borrowed(r)
-                }
-            }
-
-
-            impl<'a, 'b: 'a> ::#core::convert::From<&'a ::#alloc::borrow::Cow<'b, #ty>> for &'a #ty {
-                #[inline]
-                fn from(r: &'a ::#alloc::borrow::Cow<'b, #ty>) -> &'a #ty {
-                    ::#core::borrow::Borrow::borrow(r)
-                }
-            }
-
-            impl ::#core::convert::From<&'_ #ty> for ::#alloc::rc::Rc<#ty> {
-                #[inline]
-                fn from(r: &'_ #ty) -> Self {
-                    #pointer_reinterpret_safety_comment
-                    let rc = ::#alloc::rc::Rc::<str>::from(r.as_str());
-                    unsafe { ::#alloc::rc::Rc::from_raw(::#alloc::rc::Rc::into_raw(rc) as *const #ty) }
-                }
-            }
-
-            impl ::#core::convert::From<&'_ #ty> for ::#alloc::sync::Arc<#ty> {
-                #[inline]
-                fn from(r: &'_ #ty) -> Self {
-                    #pointer_reinterpret_safety_comment
-                    let arc = ::#alloc::sync::Arc::<str>::from(r.as_str());
-                    unsafe { ::#alloc::sync::Arc::from_raw(::#alloc::sync::Arc::into_raw(arc) as *const #ty) }
-                }
-            }
+            #alloc_from
         }
     }
 
