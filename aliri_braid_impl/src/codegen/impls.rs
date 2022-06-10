@@ -130,12 +130,13 @@ impl ToImpl for ImplDisplay {
     fn to_owned_impl(&self, gen: &OwnedCodeGen) -> Option<proc_macro2::TokenStream> {
         let ty = gen.ty;
         let ref_ty = gen.ref_ty;
+        let core = gen.std_lib.core();
         self.0.map_owned(|| {
             quote! {
-                impl<'a> ::std::fmt::Display for #ty {
+                impl<'a> ::#core::fmt::Display for #ty {
                     #[inline]
-                    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-                        <#ref_ty as ::std::fmt::Display>::fmt(::std::ops::Deref::deref(self), f)
+                    fn fmt(&self, f: &mut ::#core::fmt::Formatter) -> ::#core::fmt::Result {
+                        <#ref_ty as ::#core::fmt::Display>::fmt(::#core::ops::Deref::deref(self), f)
                     }
                 }
             }
@@ -145,12 +146,13 @@ impl ToImpl for ImplDisplay {
     fn to_borrowed_impl(&self, gen: &RefCodeGen) -> Option<proc_macro2::TokenStream> {
         let ty = &gen.ty;
         let field_name = gen.field.name;
+        let core = gen.std_lib.core();
         self.0.map_ref(|| {
             quote! {
-                impl ::std::fmt::Display for #ty {
+                impl ::#core::fmt::Display for #ty {
                     #[inline]
-                    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-                        <str as ::std::fmt::Display>::fmt(&self.#field_name, f)
+                    fn fmt(&self, f: &mut ::#core::fmt::Formatter) -> ::#core::fmt::Result {
+                        <str as ::#core::fmt::Display>::fmt(&self.#field_name, f)
                     }
                 }
             }
@@ -177,12 +179,13 @@ impl ToImpl for ImplDebug {
     fn to_owned_impl(&self, gen: &OwnedCodeGen) -> Option<proc_macro2::TokenStream> {
         let ty = gen.ty;
         let ref_ty = gen.ref_ty;
+        let core = gen.std_lib.core();
         self.0.map_owned(|| {
             quote! {
-                impl<'a> ::std::fmt::Debug for #ty {
+                impl<'a> ::#core::fmt::Debug for #ty {
                     #[inline]
-                    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-                        <#ref_ty as ::std::fmt::Debug>::fmt(::std::ops::Deref::deref(self), f)
+                    fn fmt(&self, f: &mut ::#core::fmt::Formatter) -> ::#core::fmt::Result {
+                        <#ref_ty as ::#core::fmt::Debug>::fmt(::#core::ops::Deref::deref(self), f)
                     }
                 }
             }
@@ -192,12 +195,13 @@ impl ToImpl for ImplDebug {
     fn to_borrowed_impl(&self, gen: &RefCodeGen) -> Option<proc_macro2::TokenStream> {
         let ty = &gen.ty;
         let field_name = gen.field.name;
+        let core = gen.std_lib.core();
         self.0.map_ref(|| {
             quote! {
-                impl ::std::fmt::Debug for #ty {
+                impl ::#core::fmt::Debug for #ty {
                     #[inline]
-                    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-                        <str as ::std::fmt::Debug>::fmt(&self.#field_name, f)
+                    fn fmt(&self, f: &mut ::#core::fmt::Formatter) -> ::#core::fmt::Result {
+                        <str as ::#core::fmt::Debug>::fmt(&self.#field_name, f)
                     }
                 }
             }
@@ -252,14 +256,16 @@ impl ToImpl for ImplSerde {
             let ty = &gen.ty;
             let owned_ty = gen.owned_ty;
             let check_mode = gen.check_mode;
+            let core = gen.std_lib.core();
+            let alloc = gen.std_lib.alloc();
 
             let handle_failure = check_mode.serde_err_handler();
 
             let deserialize_boxed = quote! {
-                impl<'de> ::serde::Deserialize<'de> for Box<#ty> {
-                    fn deserialize<D: ::serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+                impl<'de> ::serde::Deserialize<'de> for ::#alloc::boxed::Box<#ty> {
+                    fn deserialize<D: ::serde::Deserializer<'de>>(deserializer: D) -> ::#core::result::Result<Self, D::Error> {
                         let owned = <#owned_ty as ::serde::Deserialize<'de>>::deserialize(deserializer)?;
-                        Ok(owned.into_boxed_ref())
+                        ::#core::result::Result::Ok(owned.into_boxed_ref())
                     }
                 }
             };
@@ -270,25 +276,25 @@ impl ToImpl for ImplSerde {
                     \n\
                     This deserializer _requires_ that the value already be in normalized form. \
                     If values may require normalization, then deserialized as [`{owned}`] or \
-                    [`Cow`][std::borrow::Cow]`<{ty}>` instead.",
+                    [`Cow`][{alloc}::borrow::Cow]`<{ty}>` instead.",
                     ty = ty.to_token_stream(),
                     owned = owned_ty.to_token_stream(),
                 );
 
                 quote! {
-                    // impl<'de: 'a, 'a> ::serde::Deserialize<'de> for ::std::borrow::Cow<'a, #name> {
-                    //     fn deserialize<D: ::serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+                    // impl<'de: 'a, 'a> ::serde::Deserialize<'de> for ::#alloc::borrow::Cow<'a, #name> {
+                    //     fn deserialize<D: ::serde::Deserializer<'de>>(deserializer: D) -> ::#core::result::Result<Self, D::Error> {
                     //         let raw = <&str as ::serde::Deserialize<'de>>::deserialize(deserializer)?;
-                    //         Ok(#name::from_str(raw)#handle_failure)
+                    //         ::#core::result::Result::Ok(#name::from_str(raw)#handle_failure)
                     //     }
                     // }
                     //
                     #[doc = #deserialize_doc]
                     #[allow(clippy::needless_question_mark)]
                     impl<'de: 'a, 'a> ::serde::Deserialize<'de> for &'a #ty {
-                        fn deserialize<D: ::serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+                        fn deserialize<D: ::serde::Deserializer<'de>>(deserializer: D) -> ::#core::result::Result<Self, D::Error> {
                             let raw = <&str as ::serde::Deserialize<'de>>::deserialize(deserializer)?;
-                            Ok(#ty::from_normalized_str(raw)#handle_failure)
+                            ::#core::result::Result::Ok(#ty::from_normalized_str(raw)#handle_failure)
                         }
                     }
                 }
@@ -296,9 +302,9 @@ impl ToImpl for ImplSerde {
                 quote! {
                     #[allow(clippy::needless_question_mark)]
                     impl<'de: 'a, 'a> ::serde::Deserialize<'de> for &'a #ty {
-                        fn deserialize<D: ::serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+                        fn deserialize<D: ::serde::Deserializer<'de>>(deserializer: D) -> ::#core::result::Result<Self, D::Error> {
                             let raw = <&str as ::serde::Deserialize<'de>>::deserialize(deserializer)?;
-                            Ok(#ty::from_str(raw)#handle_failure)
+                            ::#core::result::Result::Ok(#ty::from_str(raw)#handle_failure)
                         }
                     }
                 }
@@ -306,7 +312,7 @@ impl ToImpl for ImplSerde {
 
             quote! {
                 impl ::serde::Serialize for #ty {
-                    fn serialize<S: ::serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+                    fn serialize<S: ::serde::Serializer>(&self, serializer: S) -> ::#core::result::Result<S::Ok, S::Error> {
                         <str as ::serde::Serialize>::serialize(self.as_str(), serializer)
                     }
                 }

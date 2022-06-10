@@ -1,4 +1,4 @@
-use super::{impls::ToImpl, AttrList, CheckMode, Field, FieldName, Impls};
+use super::{impls::ToImpl, AttrList, CheckMode, Field, FieldName, Impls, StdLib};
 use quote::{quote, ToTokens, TokenStreamExt};
 use std::borrow::Cow;
 
@@ -12,6 +12,7 @@ pub struct RefCodeGen<'a> {
     pub field: Field<'a>,
     pub check_mode: &'a CheckMode,
     pub owned_ty: &'a syn::Ident,
+    pub std_lib: &'a StdLib,
     pub impls: &'a Impls,
 }
 
@@ -77,6 +78,8 @@ impl<'a> RefCodeGen<'a> {
     fn infallible_inherent(&self) -> proc_macro2::TokenStream {
         let ty = &self.ty;
         let owned_ty = self.owned_ty;
+        let core = self.std_lib.core();
+        let alloc = self.std_lib.alloc();
 
         let doc_comment = format!(
             "Transparently reinterprets the string slice as a strongly-typed {}",
@@ -118,11 +121,11 @@ impl<'a> RefCodeGen<'a> {
             #[allow(unsafe_code)]
             #[inline]
             #[doc = #into_owned_doc]
-            pub fn into_owned(self: Box<#ty>) -> #owned_ty {
+            pub fn into_owned(self: ::#alloc::boxed::Box<#ty>) -> #owned_ty {
                 #box_pointer_reinterpret_safety_comment
-                let raw = ::std::boxed::Box::into_raw(self);
-                let boxed = unsafe { ::std::boxed::Box::from_raw(raw as *mut str) };
-                #owned_ty::new(boxed.into())
+                let raw = ::#alloc::boxed::Box::into_raw(self);
+                let boxed = unsafe { ::#alloc::boxed::Box::from_raw(raw as *mut str) };
+                #owned_ty::new(::#core::convert::From::from(boxed))
             }
         }
     }
@@ -148,6 +151,8 @@ impl<'a> RefCodeGen<'a> {
 
         let ty = &self.ty;
         let owned_ty = self.owned_ty;
+        let core = self.std_lib.core();
+        let alloc = self.std_lib.alloc();
         let unchecked_safety_comment = Self::unchecked_safety_comment(false);
         let pointer_reinterpret_safety_comment = self.pointer_reinterpret_safety_comment(false);
         let box_pointer_reinterpret_safety_comment = self.pointer_reinterpret_safety_comment(true);
@@ -158,10 +163,10 @@ impl<'a> RefCodeGen<'a> {
             #[allow(unsafe_code)]
             #[inline]
             #[doc = #doc_comment]
-            pub fn from_str(raw: &str) -> Result<&Self, #validator::Error> {
+            pub fn from_str(raw: &str) -> ::#core::result::Result<&Self, #validator::Error> {
                 #validator::validate(raw)?;
                 #unchecked_safety_comment
-                Ok(unsafe { Self::from_str_unchecked(raw) })
+                ::#core::result::Result::Ok(unsafe { Self::from_str_unchecked(raw) })
             }
 
             #[allow(unsafe_code)]
@@ -189,11 +194,11 @@ impl<'a> RefCodeGen<'a> {
             #[allow(unsafe_code)]
             #[inline]
             #[doc = #into_owned_doc]
-            pub fn into_owned(self: Box<#ty>) -> #owned_ty {
+            pub fn into_owned(self: ::#alloc::boxed::Box<#ty>) -> #owned_ty {
                 #box_pointer_reinterpret_safety_comment
-                let raw = ::std::boxed::Box::into_raw(self);
-                let boxed = unsafe { ::std::boxed::Box::from_raw(raw as *mut str) };
-                let s = boxed.into();
+                let raw = ::#alloc::boxed::Box::into_raw(self);
+                let boxed = unsafe { ::#alloc::boxed::Box::from_raw(raw as *mut str) };
+                let s = ::#core::convert::From::from(boxed);
                 #unchecked_safety_comment
                 unsafe { #owned_ty::new_unchecked(s) }
             }
@@ -249,6 +254,8 @@ impl<'a> RefCodeGen<'a> {
 
         let ty = &self.ty;
         let owned_ty = self.owned_ty;
+        let core = self.std_lib.core();
+        let alloc = self.std_lib.alloc();
         let unchecked_safety_comment = Self::unchecked_safety_comment(true);
         let pointer_reinterpret_safety_comment = self.pointer_reinterpret_safety_comment(false);
         let box_pointer_reinterpret_safety_comment = self.pointer_reinterpret_safety_comment(true);
@@ -260,24 +267,24 @@ impl<'a> RefCodeGen<'a> {
             #[allow(unsafe_code)]
             #[inline]
             #[doc = #doc_comment]
-            pub fn from_str(raw: &str) -> Result<::std::borrow::Cow<Self>, #normalizer::Error> {
+            pub fn from_str(raw: &str) -> ::#core::result::Result<::#alloc::borrow::Cow<Self>, #normalizer::Error> {
                 let cow = #normalizer::normalize(raw)?;
                 #unchecked_safety_comment
-                Ok(unsafe { Self::from_cow_str_unchecked(cow) })
+                ::#core::result::Result::Ok(unsafe { Self::from_cow_str_unchecked(cow) })
             }
 
             #[allow(unsafe_code)]
             #[inline]
             #[doc = #doc_comment_cow_unsafe]
-            unsafe fn from_cow_str_unchecked(cow: ::std::borrow::Cow<str>) -> ::std::borrow::Cow<Self> {
+            unsafe fn from_cow_str_unchecked(cow: ::#alloc::borrow::Cow<str>) -> ::#alloc::borrow::Cow<Self> {
                 match cow {
-                    ::std::borrow::Cow::Borrowed(raw) => {
+                    ::#alloc::borrow::Cow::Borrowed(raw) => {
                         let value = Self::from_str_unchecked(raw);
-                        ::std::borrow::Cow::Borrowed(value)
+                        ::#alloc::borrow::Cow::Borrowed(value)
                     }
-                    ::std::borrow::Cow::Owned(normalized) => {
+                    ::#alloc::borrow::Cow::Owned(normalized) => {
                         let value = #owned_ty::new_unchecked(normalized);
-                        ::std::borrow::Cow::Owned(value)
+                        ::#alloc::borrow::Cow::Owned(value)
                     }
                 }
             }
@@ -285,10 +292,10 @@ impl<'a> RefCodeGen<'a> {
             #[allow(unsafe_code)]
             #[inline]
             #[doc = #doc_comment_norm]
-            pub fn from_normalized_str(raw: &str) -> Result<&Self, #validator::Error> {
+            pub fn from_normalized_str(raw: &str) -> ::#core::result::Result<&Self, #validator::Error> {
                 #validator::validate(raw)?;
                 #unchecked_safety_comment
-                Ok(unsafe { Self::from_str_unchecked(raw) })
+                ::#core::result::Result::Ok(unsafe { Self::from_str_unchecked(raw) })
             }
 
             #[allow(unsafe_code)]
@@ -315,11 +322,11 @@ impl<'a> RefCodeGen<'a> {
             #[allow(unsafe_code)]
             #[inline]
             #[doc = #into_owned_doc]
-            pub fn into_owned(self: Box<#ty>) -> #owned_ty {
+            pub fn into_owned(self: ::#alloc::boxed::Box<#ty>) -> #owned_ty {
                 #box_pointer_reinterpret_safety_comment
-                let raw = ::std::boxed::Box::into_raw(self);
-                let boxed = unsafe { ::std::boxed::Box::from_raw(raw as *mut str) };
-                let s = boxed.into();
+                let raw = ::#alloc::boxed::Box::into_raw(self);
+                let boxed = unsafe { ::#alloc::boxed::Box::from_raw(raw as *mut str) };
+                let s = ::#core::convert::From::from(boxed);
                 #unchecked_safety_comment
                 unsafe { #owned_ty::new_unchecked(s) }
             }
@@ -329,6 +336,8 @@ impl<'a> RefCodeGen<'a> {
     fn comparison(&self) -> proc_macro2::TokenStream {
         let ty = &self.ty;
         let owned_ty = self.owned_ty;
+        let core = self.std_lib.core();
+        let alloc = self.std_lib.alloc();
 
         let create = match self.field.name {
             FieldName::Unnamed => quote! { #owned_ty(self.0.into()) },
@@ -338,7 +347,7 @@ impl<'a> RefCodeGen<'a> {
         };
 
         quote! {
-            impl ToOwned for #ty {
+            impl ::#alloc::borrow::ToOwned for #ty {
                 type Owned = #owned_ty;
 
                 #[inline]
@@ -347,28 +356,28 @@ impl<'a> RefCodeGen<'a> {
                 }
             }
 
-            impl PartialEq<#ty> for #owned_ty {
+            impl ::#core::cmp::PartialEq<#ty> for #owned_ty {
                 #[inline]
                 fn eq(&self, other: &#ty) -> bool {
                     self.as_str() == other.as_str()
                 }
             }
 
-            impl PartialEq<#owned_ty> for #ty {
+            impl ::#core::cmp::PartialEq<#owned_ty> for #ty {
                 #[inline]
                 fn eq(&self, other: &#owned_ty) -> bool {
                     self.as_str() == other.as_str()
                 }
             }
 
-            impl PartialEq<&'_ #ty> for #owned_ty {
+            impl ::#core::cmp::PartialEq<&'_ #ty> for #owned_ty {
                 #[inline]
                 fn eq(&self, other: &&#ty) -> bool {
                     self.as_str() == other.as_str()
                 }
             }
 
-            impl PartialEq<#owned_ty> for &'_ #ty {
+            impl ::#core::cmp::PartialEq<#owned_ty> for &'_ #ty {
                 #[inline]
                 fn eq(&self, other: &#owned_ty) -> bool {
                     self.as_str() == other.as_str()
@@ -380,18 +389,20 @@ impl<'a> RefCodeGen<'a> {
     fn conversion(&self) -> proc_macro2::TokenStream {
         let ty = &self.ty;
         let field_name = self.field.name;
+        let core = self.std_lib.core();
+        let alloc = self.std_lib.alloc();
         let pointer_reinterpret_safety_comment = self.pointer_reinterpret_safety_comment(false);
 
         let from_str = match &self.check_mode {
             CheckMode::None => quote! {
-                impl<'a> From<&'a str> for &'a #ty {
+                impl<'a> ::#core::convert::From<&'a str> for &'a #ty {
                     #[inline]
                     fn from(s: &'a str) -> &'a #ty {
                         #ty::from_str(s)
                     }
                 }
 
-                impl ::std::borrow::Borrow<str> for #ty {
+                impl ::#core::borrow::Borrow<str> for #ty {
                     #[inline]
                     fn borrow(&self) -> &str {
                         &self.#field_name
@@ -401,16 +412,16 @@ impl<'a> RefCodeGen<'a> {
             CheckMode::Validate(validator) => {
                 let validator = crate::as_validator(validator);
                 quote! {
-                    impl<'a> std::convert::TryFrom<&'a str> for &'a #ty {
+                    impl<'a> ::#core::convert::TryFrom<&'a str> for &'a #ty {
                         type Error = #validator::Error;
 
                         #[inline]
-                        fn try_from(s: &'a str) -> Result<&'a #ty, Self::Error> {
+                        fn try_from(s: &'a str) -> ::#core::result::Result<&'a #ty, Self::Error> {
                             #ty::from_str(s)
                         }
                     }
 
-                    impl ::std::borrow::Borrow<str> for #ty {
+                    impl ::#core::borrow::Borrow<str> for #ty {
                         #[inline]
                         fn borrow(&self) -> &str {
                             &self.#field_name
@@ -421,11 +432,11 @@ impl<'a> RefCodeGen<'a> {
             CheckMode::Normalize(normalizer) => {
                 let validator = crate::as_validator(normalizer);
                 quote! {
-                    impl<'a> std::convert::TryFrom<&'a str> for &'a #ty {
+                    impl<'a> ::#core::convert::TryFrom<&'a str> for &'a #ty {
                         type Error = #validator::Error;
 
                         #[inline]
-                        fn try_from(s: &'a str) -> Result<&'a #ty, Self::Error> {
+                        fn try_from(s: &'a str) -> ::#core::result::Result<&'a #ty, Self::Error> {
                             #ty::from_normalized_str(s)
                         }
                     }
@@ -436,43 +447,43 @@ impl<'a> RefCodeGen<'a> {
         quote! {
             #from_str
 
-            impl AsRef<str> for #ty {
+            impl ::#core::convert::AsRef<str> for #ty {
                 #[inline]
                 fn as_ref(&self) -> &str {
                     &self.#field_name
                 }
             }
 
-            impl<'a> From<&'a #ty> for ::std::borrow::Cow<'a, #ty> {
+            impl<'a> ::#core::convert::From<&'a #ty> for ::#alloc::borrow::Cow<'a, #ty> {
                 #[inline]
                 fn from(r: &'a #ty) -> Self {
-                    ::std::borrow::Cow::Borrowed(r)
+                    ::#alloc::borrow::Cow::Borrowed(r)
                 }
             }
 
 
-            impl<'a, 'b: 'a> From<&'a ::std::borrow::Cow<'b, #ty>> for &'a #ty {
+            impl<'a, 'b: 'a> ::#core::convert::From<&'a ::#alloc::borrow::Cow<'b, #ty>> for &'a #ty {
                 #[inline]
-                fn from(r: &'a ::std::borrow::Cow<'b, #ty>) -> &'a #ty {
-                    ::std::borrow::Borrow::borrow(r)
+                fn from(r: &'a ::#alloc::borrow::Cow<'b, #ty>) -> &'a #ty {
+                    ::#core::borrow::Borrow::borrow(r)
                 }
             }
 
-            impl From<&'_ #ty> for ::std::rc::Rc<#ty> {
-                #[inline]
-                fn from(r: &'_ #ty) -> Self {
-                    #pointer_reinterpret_safety_comment
-                    let rc = ::std::rc::Rc::<str>::from(r.as_str());
-                    unsafe { ::std::rc::Rc::from_raw(::std::rc::Rc::into_raw(rc) as *const #ty) }
-                }
-            }
-
-            impl From<&'_ #ty> for ::std::sync::Arc<#ty> {
+            impl ::#core::convert::From<&'_ #ty> for ::#alloc::rc::Rc<#ty> {
                 #[inline]
                 fn from(r: &'_ #ty) -> Self {
                     #pointer_reinterpret_safety_comment
-                    let arc = ::std::sync::Arc::<str>::from(r.as_str());
-                    unsafe { ::std::sync::Arc::from_raw(::std::sync::Arc::into_raw(arc) as *const #ty) }
+                    let rc = ::#alloc::rc::Rc::<str>::from(r.as_str());
+                    unsafe { ::#alloc::rc::Rc::from_raw(::#alloc::rc::Rc::into_raw(rc) as *const #ty) }
+                }
+            }
+
+            impl ::#core::convert::From<&'_ #ty> for ::#alloc::sync::Arc<#ty> {
+                #[inline]
+                fn from(r: &'_ #ty) -> Self {
+                    #pointer_reinterpret_safety_comment
+                    let arc = ::#alloc::sync::Arc::<str>::from(r.as_str());
+                    unsafe { ::#alloc::sync::Arc::from_raw(::#alloc::sync::Arc::into_raw(arc) as *const #ty) }
                 }
             }
         }

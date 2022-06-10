@@ -17,11 +17,44 @@ mod symbol;
 
 pub type AttrList<'a> = syn::punctuated::Punctuated<&'a syn::NestedMeta, syn::Token![,]>;
 
+#[derive(Clone, Debug)]
+pub struct StdLib {
+    core: proc_macro2::Ident,
+    alloc: proc_macro2::Ident,
+}
+
+impl StdLib {
+    pub fn no_std(span: proc_macro2::Span) -> Self {
+        Self {
+            core: proc_macro2::Ident::new("core", span),
+            alloc: proc_macro2::Ident::new("alloc", span),
+        }
+    }
+
+    pub fn core(&self) -> &proc_macro2::Ident {
+        &self.core
+    }
+
+    pub fn alloc(&self) -> &proc_macro2::Ident {
+        &self.alloc
+    }
+}
+
+impl Default for StdLib {
+    fn default() -> Self {
+        Self {
+            core: proc_macro2::Ident::new("std", proc_macro2::Span::call_site()),
+            alloc: proc_macro2::Ident::new("std", proc_macro2::Span::call_site()),
+        }
+    }
+}
+
 pub struct Params<'a> {
     ref_ty: Option<syn::Type>,
     ref_doc: Vec<Cow<'a, syn::Lit>>,
     ref_attrs: AttrList<'a>,
     owned_attrs: AttrList<'a>,
+    std_lib: StdLib,
     check_mode: IndefiniteCheckMode,
     impls: Impls,
 }
@@ -33,6 +66,7 @@ impl<'a> Default for Params<'a> {
             ref_doc: Vec::new(),
             ref_attrs: AttrList::new(),
             owned_attrs: AttrList::new(),
+            std_lib: StdLib::default(),
             check_mode: IndefiniteCheckMode::None,
             impls: Impls::default(),
         }
@@ -112,6 +146,9 @@ impl<'a> Params<'a> {
                         .try_set_normalizer(None)
                         .map_err(|s| syn::Error::new_spanned(arg, s))?;
                 }
+                syn::NestedMeta::Meta(syn::Meta::Path(p)) if p == symbol::NO_STD => {
+                    params.std_lib = StdLib::no_std(p.span());
+                }
                 syn::NestedMeta::Meta(
                     syn::Meta::Path(ref path)
                     | syn::Meta::NameValue(syn::MetaNameValue { ref path, .. }),
@@ -139,6 +176,7 @@ impl<'a> Params<'a> {
             ref_doc,
             ref_attrs,
             owned_attrs,
+            std_lib,
             check_mode,
             impls,
         } = self;
@@ -165,6 +203,7 @@ impl<'a> Params<'a> {
             ref_attrs,
             ref_ty,
 
+            std_lib,
             impls,
         })
     }
@@ -181,6 +220,7 @@ pub struct CodeGen<'a> {
     ref_attrs: AttrList<'a>,
     ref_ty: syn::Type,
 
+    std_lib: StdLib,
     impls: Impls,
 }
 
@@ -204,6 +244,7 @@ impl<'a> CodeGen<'a> {
             attrs: &self.owned_attrs,
             ty: &self.body.ident,
             ref_ty: &self.ref_ty,
+            std_lib: &self.std_lib,
             impls: &self.impls,
         }
     }
@@ -222,6 +263,7 @@ impl<'a> CodeGen<'a> {
                 self.ref_ty.span(),
             ),
             owned_ty: &self.body.ident,
+            std_lib: &self.std_lib,
             impls: &self.impls,
         }
     }

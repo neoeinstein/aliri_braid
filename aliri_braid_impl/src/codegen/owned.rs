@@ -1,4 +1,4 @@
-use super::{impls::ToImpl, AttrList, CheckMode, Field, Impls};
+use super::{impls::ToImpl, AttrList, CheckMode, Field, Impls, StdLib};
 use quote::{quote, ToTokens};
 
 pub struct OwnedCodeGen<'a> {
@@ -9,6 +9,7 @@ pub struct OwnedCodeGen<'a> {
     pub field: Field<'a>,
     pub check_mode: &'a CheckMode,
     pub ref_ty: &'a syn::Type,
+    pub std_lib: &'a StdLib,
     pub impls: &'a Impls,
 }
 
@@ -28,12 +29,13 @@ impl<'a> OwnedCodeGen<'a> {
         let create = self.field.self_constructor();
         let ref_ty = self.ref_ty;
         let wrapped_type = self.field.ty;
+        let alloc = self.std_lib.alloc();
 
         quote! {
             #[doc = #doc_comment]
             #[inline]
             pub const fn new(#param: #wrapped_type) -> Self {
-                // const fn ensure_infallible<T: ::aliri_braid::OwnedValue<str, Error=::std::convert::Infallible>>(_: &T) {}
+                // const fn ensure_infallible<T: ::aliri_braid::OwnedValue<str, Error=::#core::convert::Infallible>>(_: &T) {}
                 // ensure_infallible(&#param);
                 #create
             }
@@ -42,7 +44,7 @@ impl<'a> OwnedCodeGen<'a> {
             #[doc = #doc_comment]
             #[track_caller]
             pub fn from_static(raw: &'static str) -> Self {
-                #ref_ty::from_str(raw).to_owned()
+                ::#alloc::borrow::ToOwned::to_owned(#ref_ty::from_str(raw))
             }
         }
     }
@@ -69,13 +71,15 @@ impl<'a> OwnedCodeGen<'a> {
         let create = self.field.self_constructor();
         let ref_ty = self.ref_ty;
         let wrapped_type = self.field.ty;
+        let core = self.std_lib.core();
+        let alloc = self.std_lib.alloc();
 
         quote! {
             #[doc = #doc_comment]
             #[inline]
-            pub fn new(#param: #wrapped_type) -> Result<Self, #validator::Error> {
+            pub fn new(#param: #wrapped_type) -> ::#core::result::Result<Self, #validator::Error> {
                 #validator::validate(#param.as_ref())?;
-                Ok(#create)
+                ::#core::result::Result::Ok(#create)
             }
 
             #[doc = #doc_comment_unsafe]
@@ -92,7 +96,7 @@ impl<'a> OwnedCodeGen<'a> {
             #[doc = "This function will panic if the provided raw string is not valid."]
             #[track_caller]
             pub fn from_static(raw: &'static str) -> Self {
-                #ref_ty::from_static(raw).to_owned()
+                ::#alloc::borrow::ToOwned::to_owned(#ref_ty::from_static(raw))
             }
         }
     }
@@ -121,13 +125,14 @@ impl<'a> OwnedCodeGen<'a> {
         let create = self.field.self_constructor();
         let ref_ty = self.ref_ty;
         let field_ty = self.field.ty;
+        let core = self.std_lib.core();
 
         quote! {
             #[doc = #doc_comment]
             #[inline]
-            pub fn new(#param: #field_ty) -> Result<Self, #normalizer::Error> {
+            pub fn new(#param: #field_ty) -> ::#core::result::Result<Self, #normalizer::Error> {
                 let #param = #normalizer::normalize(#param.as_ref())?.into_owned();
-                Ok(#create)
+                ::#core::result::Result::Ok(#create)
             }
 
             #[doc = #doc_comment_unsafe]
@@ -160,6 +165,7 @@ impl<'a> OwnedCodeGen<'a> {
 
         let ref_type = self.ref_ty;
         let field = self.field.name;
+        let alloc = self.std_lib.alloc();
         let box_pointer_reinterpret_safety_comment = {
             let doc = format!(
                 "SAFETY: `{ty}` is `#[repr(transparent)]` around a single `str` \
@@ -178,10 +184,10 @@ impl<'a> OwnedCodeGen<'a> {
             #[doc = #doc]
             #[inline]
             #[allow(unsafe_code)]
-            pub fn into_boxed_ref(self) -> Box<#ref_type> {
+            pub fn into_boxed_ref(self) -> ::#alloc::boxed::Box<#ref_type> {
                 #box_pointer_reinterpret_safety_comment
-                let box_str = ::std::string::String::from(self.#field).into_boxed_str();
-                unsafe { ::std::boxed::Box::from_raw(::std::boxed::Box::into_raw(box_str) as *mut #ref_type) }
+                let box_str = ::#alloc::string::String::from(self.#field).into_boxed_str();
+                unsafe { ::#alloc::boxed::Box::from_raw(::#alloc::boxed::Box::into_raw(box_str) as *mut #ref_type) }
             }
         }
     }
@@ -221,30 +227,32 @@ impl<'a> OwnedCodeGen<'a> {
     fn common_conversion(&self) -> proc_macro2::TokenStream {
         let ty = self.ty;
         let ref_ty = self.ref_ty;
+        let core = self.std_lib.core();
+        let alloc = self.std_lib.alloc();
 
         quote! {
-            impl From<&'_ #ref_ty> for #ty {
+            impl ::#core::convert::From<&'_ #ref_ty> for #ty {
                 #[inline]
                 fn from(s: &#ref_ty) -> Self {
-                    s.to_owned()
+                    ::#alloc::borrow::ToOwned::to_owned(s)
                 }
             }
 
-            impl ::std::borrow::Borrow<#ref_ty> for #ty {
+            impl ::#core::borrow::Borrow<#ref_ty> for #ty {
                 #[inline]
                 fn borrow(&self) -> &#ref_ty {
-                    ::std::ops::Deref::deref(self)
+                    ::#core::ops::Deref::deref(self)
                 }
             }
 
-            impl AsRef<#ref_ty> for #ty {
+            impl ::#core::convert::AsRef<#ref_ty> for #ty {
                 #[inline]
                 fn as_ref(&self) -> &#ref_ty {
-                    ::std::ops::Deref::deref(self)
+                    ::#core::ops::Deref::deref(self)
                 }
             }
 
-            impl AsRef<str> for #ty {
+            impl ::#core::convert::AsRef<str> for #ty {
                 #[inline]
                 fn as_ref(&self) -> &str {
                     self.as_str()
@@ -252,34 +260,34 @@ impl<'a> OwnedCodeGen<'a> {
             }
 
 
-            impl From<#ty> for Box<#ref_ty> {
+            impl ::#core::convert::From<#ty> for ::#alloc::boxed::Box<#ref_ty> {
                 #[inline]
                 fn from(r: #ty) -> Self {
                     r.into_boxed_ref()
                 }
             }
 
-            impl From<Box<#ref_ty>> for #ty {
+            impl ::#core::convert::From<::#alloc::boxed::Box<#ref_ty>> for #ty {
                 #[inline]
-                fn from(r: Box<#ref_ty>) -> Self {
+                fn from(r: ::#alloc::boxed::Box<#ref_ty>) -> Self {
                     r.into_owned()
                 }
             }
 
-            impl<'a> From<::std::borrow::Cow<'a, #ref_ty>> for #ty {
+            impl<'a> ::#core::convert::From<::#alloc::borrow::Cow<'a, #ref_ty>> for #ty {
                 #[inline]
-                fn from(r: ::std::borrow::Cow<'a, #ref_ty>) -> Self {
+                fn from(r: ::#alloc::borrow::Cow<'a, #ref_ty>) -> Self {
                     match r {
-                        ::std::borrow::Cow::Borrowed(b) => b.to_owned(),
-                        ::std::borrow::Cow::Owned(o) => o,
+                        ::#alloc::borrow::Cow::Borrowed(b) => ::#alloc::borrow::ToOwned::to_owned(b),
+                        ::#alloc::borrow::Cow::Owned(o) => o,
                     }
                 }
             }
 
-            impl<'a> From<#ty> for ::std::borrow::Cow<'a, #ref_ty> {
+            impl<'a> ::#core::convert::From<#ty> for ::#alloc::borrow::Cow<'a, #ref_ty> {
                 #[inline]
                 fn from(owned: #ty) -> Self {
-                    ::std::borrow::Cow::Owned(owned)
+                    ::#alloc::borrow::Cow::Owned(owned)
                 }
             }
         }
@@ -290,46 +298,64 @@ impl<'a> OwnedCodeGen<'a> {
         let ref_ty = self.ref_ty;
         let field_ty = self.field.ty;
         let field_name = self.field.name;
+        let core = self.std_lib.core();
 
         quote! {
-            impl From<#field_ty> for #ty {
+            impl ::#core::convert::From<#field_ty> for #ty {
                 #[inline]
                 fn from(s: #field_ty) -> Self {
                     Self::new(s)
                 }
             }
 
-            impl From<&'_ str> for #ty {
+            impl ::#core::convert::From<&'_ str> for #ty {
                 #[inline]
                 fn from(s: &str) -> Self {
-                    Self::new(#field_ty::from(s))
+                    Self::new(::#core::convert::From::from(s))
                 }
             }
 
-            impl ::std::str::FromStr for #ty {
-                type Err = ::std::convert::Infallible;
+            impl ::#core::str::FromStr for #ty {
+                type Err = ::#core::convert::Infallible;
 
                 #[inline]
-                fn from_str(s: &str) -> Result<Self, Self::Err> {
-                    Ok(Self::from(s))
+                fn from_str(s: &str) -> ::#core::result::Result<Self, Self::Err> {
+                    ::#core::result::Result::Ok(::#core::convert::From::from(s))
                 }
             }
 
-            impl ::std::borrow::Borrow<str> for #ty {
+            impl ::#core::borrow::Borrow<str> for #ty {
                 #[inline]
                 fn borrow(&self) -> &str {
                     self.as_str()
                 }
             }
 
-            impl ::std::ops::Deref for #ty {
+            impl ::#core::ops::Deref for #ty {
                 type Target = #ref_ty;
 
                 #[inline]
                 fn deref(&self) -> &Self::Target {
-                    #ref_ty::from_str(self.#field_name.as_ref())
+                    #ref_ty::from_str(::#core::convert::AsRef::as_ref(&self.#field_name))
                 }
             }
+        }
+    }
+
+    fn unchecked_safety_comment(is_normalized: bool) -> proc_macro2::TokenStream {
+        let doc = format!(
+            "SAFETY: The value was satisfies the type's invariant and \
+            conforms to the required implicit contracts of the {}.",
+            if is_normalized {
+                "normalizer"
+            } else {
+                "validator"
+            },
+        );
+
+        quote! {
+            #[doc = #doc]
+            fn unchecked_safety_comment() {}
         }
     }
 
@@ -339,53 +365,55 @@ impl<'a> OwnedCodeGen<'a> {
         let field_ty = self.field.ty;
         let field_name = self.field.name;
         let validator = crate::as_validator(validator);
+        let core = self.std_lib.core();
+        let alloc = self.std_lib.alloc();
+        let unchecked_safety_comment = Self::unchecked_safety_comment(false);
 
         quote! {
-            impl ::std::convert::TryFrom<#field_ty> for #ty {
+            impl ::#core::convert::TryFrom<#field_ty> for #ty {
                 type Error = #validator::Error;
 
                 #[inline]
-                fn try_from(s: #field_ty) -> Result<Self, Self::Error> {
+                fn try_from(s: #field_ty) -> ::#core::result::Result<Self, Self::Error> {
                     Self::new(s)
                 }
             }
 
-            impl ::std::convert::TryFrom<&'_ str> for #ty {
+            impl ::#core::convert::TryFrom<&'_ str> for #ty {
                 type Error = #validator::Error;
 
                 #[inline]
-                fn try_from(s: &str) -> Result<Self, Self::Error> {
+                fn try_from(s: &str) -> ::#core::result::Result<Self, Self::Error> {
                     let ref_ty = #ref_ty::from_str(s)?;
-                    Ok(ref_ty.to_owned())
+                    ::#core::result::Result::Ok(::#alloc::borrow::ToOwned::to_owned(ref_ty))
                 }
             }
 
-            impl ::std::str::FromStr for #ty {
+            impl ::#core::str::FromStr for #ty {
                 type Err = #validator::Error;
 
                 #[inline]
-                fn from_str(s: &str) -> Result<Self, Self::Err> {
+                fn from_str(s: &str) -> ::#core::result::Result<Self, Self::Err> {
                     let ref_ty = #ref_ty::from_str(s)?;
-                    Ok(ref_ty.to_owned())
+                    ::#core::result::Result::Ok(::#alloc::borrow::ToOwned::to_owned(ref_ty))
                 }
             }
 
-            impl ::std::borrow::Borrow<str> for #ty {
+            impl ::#core::borrow::Borrow<str> for #ty {
                 #[inline]
                 fn borrow(&self) -> &str {
                     self.as_str()
                 }
             }
 
-            impl ::std::ops::Deref for #ty {
+            impl ::#core::ops::Deref for #ty {
                 type Target = #ref_ty;
 
                 #[inline]
                 #[allow(unsafe_code)]
                 fn deref(&self) -> &Self::Target {
-                    // SAFETY: At this point, we are certain that the underlying string
-                    // slice passes validation, so the implicit contract is satisfied.
-                    unsafe { #ref_ty::from_str_unchecked(self.#field_name.as_ref()) }
+                    #unchecked_safety_comment
+                    unsafe { #ref_ty::from_str_unchecked(::#core::convert::AsRef::as_ref(&self.#field_name)) }
                 }
             }
         }
@@ -397,45 +425,46 @@ impl<'a> OwnedCodeGen<'a> {
         let field_ty = self.field.ty;
         let field_name = self.field.name;
         let normalizer = crate::as_normalizer(normalizer);
+        let core = self.std_lib.core();
+        let unchecked_safety_comment = Self::unchecked_safety_comment(true);
 
         quote! {
-            impl ::std::convert::TryFrom<#field_ty> for #ty {
+            impl ::#core::convert::TryFrom<#field_ty> for #ty {
                 type Error = #normalizer::Error;
 
                 #[inline]
-                fn try_from(s: #field_ty) -> Result<Self, Self::Error> {
+                fn try_from(s: #field_ty) -> ::#core::result::Result<Self, Self::Error> {
                     Self::new(s)
                 }
             }
 
-            impl ::std::convert::TryFrom<&'_ str> for #ty {
+            impl ::#core::convert::TryFrom<&'_ str> for #ty {
                 type Error = #normalizer::Error;
 
                 #[inline]
-                fn try_from(s: &str) -> Result<Self, Self::Error> {
+                fn try_from(s: &str) -> ::#core::result::Result<Self, Self::Error> {
                     let ref_ty = #ref_ty::from_str(s)?;
-                    Ok(ref_ty.into_owned())
+                    ::#core::result::Result::Ok(ref_ty.into_owned())
                 }
             }
 
-            impl ::std::str::FromStr for #ty {
+            impl ::#core::str::FromStr for #ty {
                 type Err = #normalizer::Error;
 
                 #[inline]
-                fn from_str(s: &str) -> Result<Self, Self::Err> {
+                fn from_str(s: &str) -> ::#core::result::Result<Self, Self::Err> {
                     let ref_ty = #ref_ty::from_str(s)?;
-                    Ok(ref_ty.into_owned())
+                    ::#core::result::Result::Ok(ref_ty.into_owned())
                 }
             }
 
-            impl ::std::ops::Deref for #ty {
+            impl ::#core::ops::Deref for #ty {
                 type Target = #ref_ty;
 
                 #[inline]
                 #[allow(unsafe_code)]
                 fn deref(&self) -> &Self::Target {
-                    // SAFETY: At this point, we are certain that the underlying string
-                    // slice passes validation, so the implicit contract is satisfied.
+                    #unchecked_safety_comment
                     unsafe { #ref_ty::from_str_unchecked(&self.#field_name) }
                 }
             }
