@@ -677,6 +677,7 @@ safely from crates that otherwise forbid unsafe code.
 [`std::hash::Hash`]: https://doc.rust-lang.org/std/hash/trait.Hash.html
 [`std::cmp::Eq`]: https://doc.rust-lang.org/std/cmp/trait.Eq.html
 [`std::cmp::Ord`]: https://doc.rust-lang.org/std/cmp/trait.Ord.html
+[`std::cmp::PartialEq`]: https://doc.rust-lang.org/std/cmp/trait.PartialEq.html
 [`std::cmp::PartialEq<Owned>`]: https://doc.rust-lang.org/std/cmp/trait.PartialEq.html
 [`std::cmp::PartialEq<Borrowed>`]: https://doc.rust-lang.org/std/cmp/trait.PartialEq.html
 [`std::cmp::PartialEq<&Borrowed>`]: https://doc.rust-lang.org/std/cmp/trait.PartialEq.html
