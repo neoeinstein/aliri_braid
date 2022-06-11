@@ -19,58 +19,89 @@
 
 extern crate proc_macro;
 
-mod borrow;
-mod check_mode;
-mod owned;
-mod symbol;
+mod codegen;
 
-use symbol::*;
-
+use codegen::{Params, ParamsRef};
 use proc_macro::TokenStream;
 use syn::parse_macro_input;
 
 /// Constructs a braid
+///
+/// Any attributes assigned to the the struct will be applied to both the owned
+/// and borrowed types, except for doc-comments, with will only be applied to the
+/// owned form.
 ///
 /// Available options:
 /// * `ref = "RefName"`
 ///   * Sets the name of the borrowed type
 /// * `ref_doc = "Alternate doc comment"`
 ///   * Overrides the default doc comment for the borrowed type
+/// * `ref_attr = "#[derive(...)]"`
+///   * Provides an attribute to be placed only on the borrowed type
+/// * `owned_attr = "#[derive(...)]"`
+///   * Provides an attribute to be placed only on the owned type
 /// * either `validator [ = "Type" ]` or `normalizer [ = "Type" ]`
 ///   * Indicates the type is validated or normalized. If not specified,
 ///     it is assumed that the braid implements the relevant trait itself.
-/// * `omit_clone`
-///   * Prevents the owned type from automatically deriving a `Clone` implementation
-/// * `debug_impl = "auto|owned|none"` (default `auto`)
+/// * `clone = "impl|omit"` (default: `impl`)
+///   * Changes the automatic derivation of a `Clone` implementation on the owned type.
+/// * `debug = "impl|owned|omit"` (default `impl`)
 ///   * Changes how automatic implementations of the `Debug` trait are provided.
 ///     If `owned`, then the owned type will generate a `Debug` implementation that
 ///     will just delegate to the borrowed implementation.
-///     If `none`, then no implementations of `Debug` will be provided.
-/// * `display_impl = "auto|owned|none"` (default `auto`)
+///     If `omit`, then no implementations of `Debug` will be provided.
+/// * `display = "impl|owned|omit"` (default `impl`)
 ///   * Changes how automatic implementations of the `Display` trait are provided.
 ///     If `owned`, then the owned type will generate a `Display` implementation that
 ///     will just delegate to the borrowed implementation.
-///     If `none`, then no implementations of `Display` will be provided.
-/// * `serde`
+///     If `omit`, then no implementations of `Display` will be provided.
+/// * `ord = "impl|owned|omit"` (default `impl`)
+///   * Changes how automatic implementations of the `PartialOrd` and `Ord` traits are provided.
+///     If `owned`, then the owned type will generate implementations that
+///     will just delegate to the borrowed implementations.
+///     If `omit`, then no implementations will be provided.
+/// * `serde = "impl|omit"` (default `omit`)
 ///   * Adds serialize and deserialize implementations
+/// * `no_std`
+///   * Generates `no_std`-compatible braid (still requires `alloc`)
 #[proc_macro_attribute]
 pub fn braid(args: TokenStream, input: TokenStream) -> TokenStream {
     let args = parse_macro_input!(args as syn::AttributeArgs);
-    let body = parse_macro_input!(input as syn::ItemStruct);
+    let mut body = parse_macro_input!(input as syn::ItemStruct);
 
-    owned::typed_string_tokens(args, body)
-        .unwrap_or_else(|e| e.into_compile_error())
+    Params::parse(&args)
+        .and_then(|p| p.build(&mut body))
+        .map_or_else(syn::Error::into_compile_error, |codegen| codegen.generate())
         .into()
 }
 
+/// Constructs a ref-only braid
+///
+/// Available options:
+/// * either `validator [ = "Type" ]`
+///   * Indicates the type is validated. If not specified,
+///     it is assumed that the braid implements the relevant trait itself.
+/// * `debug = "impl|omit"` (default `impl`)
+///   * Changes how automatic implementations of the `Debug` trait are provided.
+///     If `omit`, then no implementations of `Debug` will be provided.
+/// * `display = "impl|omit"` (default `impl`)
+///   * Changes how automatic implementations of the `Display` trait are provided.
+///     If `omit`, then no implementations of `Display` will be provided.
+/// * `ord = "impl|omit"` (default `impl`)
+///   * Changes how automatic implementations of the `PartialOrd` and `Ord` traits are provided.
+///     If `omit`, then no implementations will be provided.
+/// * `serde = "impl|omit"` (default `omit`)
+///   * Adds serialize and deserialize implementations
+/// * `no_std`
+///   * Generates a `no_std`-compatible braid that doesn't require `alloc`
 #[proc_macro_attribute]
-#[doc(hidden)]
 pub fn braid_ref(args: TokenStream, input: TokenStream) -> TokenStream {
     let args = parse_macro_input!(args as syn::AttributeArgs);
-    let body = parse_macro_input!(input as syn::ItemStruct);
+    let mut body = parse_macro_input!(input as syn::ItemStruct);
 
-    borrow::typed_string_ref_tokens(args, body)
-        .unwrap_or_else(|e| e.into_compile_error())
+    ParamsRef::parse(&args)
+        .and_then(|p| p.build(&mut body))
+        .unwrap_or_else(syn::Error::into_compile_error)
         .into()
 }
 
@@ -80,71 +111,4 @@ fn as_validator(validator: &syn::Type) -> proc_macro2::TokenStream {
 
 fn as_normalizer(normalizer: &syn::Type) -> proc_macro2::TokenStream {
     quote::quote! { <#normalizer as ::aliri_braid::Normalizer> }
-}
-
-fn get_lit_str(attr_name: Symbol, lit: &syn::Lit) -> Result<&syn::LitStr, syn::Error> {
-    if let syn::Lit::Str(lit) = lit {
-        Ok(lit)
-    } else {
-        Err(syn::Error::new_spanned(
-            lit,
-            format!(
-                "expected attribute `{}` to have a string value (`{} = \"value\"`)",
-                attr_name, attr_name
-            ),
-        ))
-    }
-}
-
-// fn parse_lit_into_path(attr_name: Symbol, lit: &syn::Lit) -> Result<syn::Path, ()> {
-//     let string = get_lit_str( attr_name, lit)?;
-//     parse_lit_str(string).map_err(|_| {
-//         syn::Error::new_spanned(lit, format!("failed to parse path: {:?}", string.value()))
-//     })
-// }
-
-fn parse_lit_into_type(attr_name: Symbol, lit: &syn::Lit) -> Result<syn::Type, syn::Error> {
-    let string = get_lit_str(attr_name, lit)?;
-    parse_lit_str(string).map_err(|_| {
-        syn::Error::new_spanned(lit, format!("failed to parse type: {:?}", string.value()))
-    })
-}
-
-fn parse_lit_into_string(attr_name: Symbol, lit: &syn::Lit) -> Result<String, syn::Error> {
-    let string = get_lit_str(attr_name, lit)?;
-    Ok(string.value())
-}
-
-fn parse_lit_str<T>(s: &syn::LitStr) -> syn::parse::Result<T>
-where
-    T: syn::parse::Parse,
-{
-    let tokens = spanned_tokens(s)?;
-    syn::parse2(tokens)
-}
-
-fn spanned_tokens(s: &syn::LitStr) -> syn::parse::Result<proc_macro2::TokenStream> {
-    let stream = syn::parse_str(&s.value())?;
-    Ok(respan_token_stream(stream, s.span()))
-}
-
-fn respan_token_stream(
-    stream: proc_macro2::TokenStream,
-    span: proc_macro2::Span,
-) -> proc_macro2::TokenStream {
-    stream
-        .into_iter()
-        .map(|token| respan_token_tree(token, span))
-        .collect()
-}
-
-fn respan_token_tree(
-    mut token: proc_macro2::TokenTree,
-    span: proc_macro2::Span,
-) -> proc_macro2::TokenTree {
-    if let proc_macro2::TokenTree::Group(g) = &mut token {
-        *g = proc_macro2::Group::new(g.delimiter(), respan_token_stream(g.stream(), span));
-    }
-    token.set_span(span);
-    token
 }

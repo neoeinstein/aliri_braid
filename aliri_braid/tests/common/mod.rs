@@ -29,8 +29,8 @@ macro_rules! assert_core_impls {
 
         assert_core_impls!($owned => $borrowed where ValidationError = std::convert::Infallible);
     };
-    ($owned:ty => $borrowed:ty where NormalizationError = $error:ty) => {
-        assert_core_impls!($owned => $borrowed where Error = ($error, aliri_braid::NormalizationError<$error>));
+    ($owned:ty => $borrowed:ty where NormalizationError = $error:ty, ValidationError = $verror:ty) => {
+        assert_core_impls!($owned => $borrowed where Error = ($error, $verror));
     };
     ($owned:ty => $borrowed:ty where ValidationError = $error:ty) => {
         assert_impl_all_with_lifetime!(
@@ -53,11 +53,11 @@ macro_rules! assert_core_impls {
             std::fmt::Display,
             std::hash::Hash,
             std::cmp::Eq,
+            std::cmp::Ord,
             std::cmp::PartialEq,
-            std::cmp::PartialEq<$owned>,
             std::cmp::PartialEq<$borrowed>,
             std::cmp::PartialEq<&'a $borrowed>,
-            std::cmp::PartialEq<Box<$borrowed>>,
+            std::cmp::PartialOrd,
             std::convert::AsRef<$borrowed>,
             std::convert::AsRef<str>,
             std::convert::From<&'a $borrowed>,
@@ -76,11 +76,10 @@ macro_rules! assert_core_impls {
             std::fmt::Display,
             std::hash::Hash,
             std::cmp::Eq,
+            std::cmp::Ord,
             std::cmp::PartialEq,
             std::cmp::PartialEq<$owned>,
-            std::cmp::PartialEq<$borrowed>,
-            std::cmp::PartialEq<&'a $borrowed>,
-            std::cmp::PartialEq<Box<$borrowed>>,
+            std::cmp::PartialOrd,
             std::borrow::ToOwned<Owned = $owned>,
         );
 
@@ -90,11 +89,10 @@ macro_rules! assert_core_impls {
             std::fmt::Display,
             std::hash::Hash,
             std::cmp::Eq,
+            std::cmp::Ord,
             std::cmp::PartialEq,
             std::cmp::PartialEq<$owned>,
-            std::cmp::PartialEq<$borrowed>,
-            std::cmp::PartialEq<&'a $borrowed>,
-            std::cmp::PartialEq<Box<$borrowed>>,
+            std::cmp::PartialOrd,
             std::convert::From<&'a std::borrow::Cow<'b, $borrowed>>,
             std::convert::TryFrom<&'a str, Error = $verror>,
         );

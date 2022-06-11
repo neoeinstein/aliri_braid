@@ -51,55 +51,55 @@ mod tests {
 
     #[test]
     fn owned_handles_valid() {
-        let x = ScopeToken::new("https://crates.io/scopes/publish:crate").unwrap();
+        let x = ScopeToken::from_static("https://crates.io/scopes/publish:crate");
         assert_eq!(x.as_str(), "https://crates.io/scopes/publish:crate");
     }
 
     #[test]
     fn owned_rejects_empty() {
-        let x = ScopeToken::new("");
+        let x = ScopeToken::new("".to_owned());
         assert!(matches!(x, Err(InvalidScopeToken::EmptyString)));
     }
 
     #[test]
     fn owned_rejects_invalid_quote() {
-        let x = ScopeToken::new("https://crates.io/scopes/\"publish:crate\"");
+        let x = ScopeToken::new("https://crates.io/scopes/\"publish:crate\"".to_owned());
         assert!(matches!(x, Err(InvalidScopeToken::InvalidCharacter { .. })));
     }
 
     #[test]
     fn owned_rejects_invalid_control() {
-        let x = ScopeToken::new("https://crates.io/scopes/\tpublish:crate");
+        let x = ScopeToken::new("https://crates.io/scopes/\tpublish:crate".to_owned());
         assert!(matches!(x, Err(InvalidScopeToken::InvalidCharacter { .. })));
     }
 
     #[test]
     fn owned_rejects_invalid_backslash() {
-        let x = ScopeToken::new("https://crates.io/scopes/\\publish:crate");
+        let x = ScopeToken::new("https://crates.io/scopes/\\publish:crate".to_owned());
         assert!(matches!(x, Err(InvalidScopeToken::InvalidCharacter { .. })));
     }
 
     #[test]
     fn owned_rejects_invalid_delete() {
-        let x = ScopeToken::new("https://crates.io/scopes/\x7Fpublish:crate");
+        let x = ScopeToken::new("https://crates.io/scopes/\x7Fpublish:crate".to_owned());
         assert!(matches!(x, Err(InvalidScopeToken::InvalidCharacter { .. })));
     }
 
     #[test]
     fn owned_rejects_invalid_non_ascii() {
-        let x = ScopeToken::new("https://crates.io/scopes/¿publish:crate");
+        let x = ScopeToken::new("https://crates.io/scopes/¿publish:crate".to_owned());
         assert!(matches!(x, Err(InvalidScopeToken::InvalidCharacter { .. })));
     }
 
     #[test]
     fn owned_rejects_invalid_emoji() {
-        let x = ScopeToken::new("https://crates.io/scopes/🪤publish:crate");
+        let x = ScopeToken::new("https://crates.io/scopes/🪤publish:crate".to_owned());
         assert!(matches!(x, Err(InvalidScopeToken::InvalidCharacter { .. })));
     }
 
     #[test]
     fn ref_handles_valid() {
-        let x = ScopeTokenRef::from_str("https://crates.io/scopes/publish:crate").unwrap();
+        let x = ScopeTokenRef::from_static("https://crates.io/scopes/publish:crate");
         assert_eq!(x.as_str(), "https://crates.io/scopes/publish:crate");
     }
 
@@ -107,6 +107,18 @@ mod tests {
     fn ref_rejects_empty() {
         let x = ScopeTokenRef::from_str("");
         assert!(matches!(x, Err(InvalidScopeToken::EmptyString)));
+    }
+
+    #[test]
+    #[should_panic]
+    fn from_static_ref_panics_on_empty() {
+        ScopeTokenRef::from_static("");
+    }
+
+    #[test]
+    #[should_panic]
+    fn from_static_owned_panics_on_empty() {
+        ScopeToken::from_static("");
     }
 
     #[test]
@@ -152,13 +164,13 @@ mod tests {
 
     #[test]
     fn owned_as_cow() {
-        let owned = ScopeToken::new("https://crates.io/scopes/publish:crate").unwrap();
+        let owned = ScopeToken::from_static("https://crates.io/scopes/publish:crate");
         let _bar = Bar { foo: owned.into() };
     }
 
     #[test]
     fn borrowed_as_cow() {
-        let borrowed = ScopeTokenRef::from_str("https://crates.io/scopes/publish:crate").unwrap();
+        let borrowed = ScopeTokenRef::from_static("https://crates.io/scopes/publish:crate");
         let _bar = Bar {
             foo: borrowed.into(),
         };
@@ -166,37 +178,37 @@ mod tests {
 
     #[test]
     fn owned_as_ref_borrowed() {
-        let owned = ScopeToken::new("https://crates.io/scopes/publish:crate").unwrap();
+        let owned = ScopeToken::from_static("https://crates.io/scopes/publish:crate");
         let _reference: &ScopeTokenRef = owned.as_ref();
     }
 
     #[test]
     fn owned_as_ref_str() {
-        let owned = ScopeToken::new("https://crates.io/scopes/publish:crate").unwrap();
+        let owned = ScopeToken::from_static("https://crates.io/scopes/publish:crate");
         let _reference: &str = owned.as_ref();
     }
 
     #[test]
     fn borrowed_as_ref_str() {
-        let owned = ScopeTokenRef::from_str("https://crates.io/scopes/publish:crate").unwrap();
+        let owned = ScopeTokenRef::from_static("https://crates.io/scopes/publish:crate");
         let _reference: &str = owned.as_ref();
     }
 
     #[test]
     fn owned_borrow_borrowed() {
-        let owned = ScopeToken::new("https://crates.io/scopes/publish:crate").unwrap();
+        let owned = ScopeToken::from_static("https://crates.io/scopes/publish:crate");
         let _reference: &ScopeToken = owned.borrow();
     }
 
     #[test]
     fn owned_borrow_str() {
-        let owned = ScopeToken::new("https://crates.io/scopes/publish:crate").unwrap();
+        let owned = ScopeToken::from_static("https://crates.io/scopes/publish:crate");
         let _reference: &str = owned.borrow();
     }
 
     #[test]
     fn borrowed_borrow_str() {
-        let owned = ScopeTokenRef::from_str("https://crates.io/scopes/publish:crate").unwrap();
+        let owned = ScopeTokenRef::from_static("https://crates.io/scopes/publish:crate");
         let _reference: &str = owned.borrow();
     }
 }

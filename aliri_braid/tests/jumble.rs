@@ -28,7 +28,7 @@ pub struct OrangeWithNamedField {
 
 #[test]
 fn internal_access_to_named_ref_field_compile_test() {
-    let x = OrangeWithNamedFieldRef::from_str("thing");
+    let x = OrangeWithNamedFieldRef::from_static("thing");
     let _ = &x.id;
 }
 
@@ -67,20 +67,31 @@ impl aliri_braid::Validator for ValidatedBuf {
 )]
 pub struct NormalizedBuf;
 
-impl aliri_braid::Normalizer for NormalizedBuf {
+impl aliri_braid::Validator for NormalizedBuf {
     type Error = InvalidData;
+
+    fn validate(raw: &str) -> Result<(), Self::Error> {
+        if raw.chars().any(|c| c.len_utf8() > 3 || c == ' ') {
+            Err(InvalidData)
+        } else {
+            Ok(())
+        }
+    }
+}
+
+impl aliri_braid::Normalizer for NormalizedBuf {
     fn normalize(s: &str) -> Result<Cow<str>, Self::Error> {
         if s.chars().any(|c| c.len_utf8() > 3) {
             Err(InvalidData)
         } else if s.contains(' ') {
-            Ok(Cow::Owned(s.replace(" ", "")))
+            Ok(Cow::Owned(s.replace(' ', "")))
         } else {
             Ok(Cow::Borrowed(s))
         }
     }
 }
 
-#[braid(omit_clone, debug_impl = "none", display_impl = "none")]
+#[braid(clone = "omit", debug = "omit", display = "omit")]
 pub struct CustomImpls;
 
 impl fmt::Debug for CustomImpls {
@@ -107,7 +118,7 @@ impl fmt::Display for CustomImplsRef {
     }
 }
 
-#[braid(debug_impl = "owned", display_impl = "owned")]
+#[braid(debug = "owned", display = "owned")]
 pub struct DelegatedImpls;
 
 impl fmt::Debug for DelegatedImplsRef {
@@ -122,7 +133,7 @@ impl fmt::Display for DelegatedImplsRef {
     }
 }
 
-#[braid(debug_impl = "owned", display_impl = "owned")]
+#[braid(debug = "owned", display = "owned")]
 pub struct Secret;
 
 impl fmt::Debug for SecretRef {
@@ -170,7 +181,7 @@ mod tests {
 
     #[test]
     fn check_custom_debug() {
-        let v = CustomImpls::new("");
+        let v = CustomImpls::from_static("");
         let vref: &CustomImplsRef = &v;
         assert_eq!("Owned Debug", format!("{:?}", v));
         assert_eq!("Borrowed Debug", format!("{:?}", vref));
@@ -178,7 +189,7 @@ mod tests {
 
     #[test]
     fn check_custom_display() {
-        let v = CustomImpls::new("");
+        let v = CustomImpls::from_static("");
         let vref: &CustomImplsRef = &v;
         assert_eq!("Owned Display", format!("{}", v));
         assert_eq!("Borrowed Display", format!("{}", vref));
@@ -191,7 +202,7 @@ mod tests {
 
     #[test]
     fn check_delegated_debug() {
-        let v = DelegatedImpls::new("");
+        let v = DelegatedImpls::from_static("");
         let vref: &DelegatedImplsRef = &v;
         assert_eq!("Borrowed Debug", format!("{:?}", v));
         assert_eq!("Borrowed Debug", format!("{:?}", vref));
@@ -199,7 +210,7 @@ mod tests {
 
     #[test]
     fn check_delegated_display() {
-        let v = DelegatedImpls::new("");
+        let v = DelegatedImpls::from_static("");
         let vref: &DelegatedImplsRef = &v;
         assert_eq!("Borrowed Display", format!("{}", v));
         assert_eq!("Borrowed Display", format!("{}", vref));
@@ -212,7 +223,7 @@ mod tests {
 
     #[test]
     fn check_secret_debug() {
-        let v = Secret::new("my secret is bananas");
+        let v = Secret::from_static("my secret is bananas");
         let vref: &SecretRef = &v;
         assert_eq!("***SECRET***", format!("{:?}", v));
         assert_eq!("\"my secret…\"", format!("{:#?}", v));
@@ -231,7 +242,7 @@ mod tests {
 
     #[test]
     fn check_secret_display() {
-        let v = Secret::new("my secret is bananas");
+        let v = Secret::from_static("my secret is bananas");
         let vref: &SecretRef = &v;
         assert_eq!("***SECRET***", format!("{}", v));
         assert_eq!("my secret is bananas", format!("{:#}", v));

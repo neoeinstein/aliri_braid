@@ -13,14 +13,20 @@ mod tests {
     use std::borrow::Borrow;
 
     #[test]
+    fn constant_ref_works() {
+        const TEST_CONSTANT: &BasicExample = BasicExample::from_static("test");
+        assert_eq!(TEST_CONSTANT.as_str(), "test");
+    }
+
+    #[test]
     fn owned_works() {
-        let x = BasicExampleBuf::new("Testing the Buffer");
+        let x = BasicExampleBuf::from_static("Testing the Buffer");
         assert_eq!(x.as_str(), "Testing the Buffer");
     }
 
     #[test]
     fn borrowing_implicit() {
-        let x: &BasicExample = &BasicExampleBuf::new("Testing the Buffer");
+        let x: &BasicExample = &BasicExampleBuf::from_static("Testing the Buffer");
         assert_eq!(x.as_str(), "Testing the Buffer");
     }
 
@@ -37,7 +43,7 @@ mod tests {
 
     #[test]
     fn owned_as_cow() {
-        let owned = BasicExampleBuf::new("Testing the Buffer");
+        let owned = BasicExampleBuf::from_static("Testing the Buffer");
         let _bar = Bar { foo: owned.into() };
     }
 
@@ -51,13 +57,13 @@ mod tests {
 
     #[test]
     fn owned_as_ref_borrowed() {
-        let owned = BasicExampleBuf::new("Testing the Buffer");
+        let owned = BasicExampleBuf::from_static("Testing the Buffer");
         let _reference: &BasicExample = owned.as_ref();
     }
 
     #[test]
     fn owned_as_ref_str() {
-        let owned = BasicExampleBuf::new("Testing the Buffer");
+        let owned = BasicExampleBuf::from_static("Testing the Buffer");
         let _reference: &str = owned.as_ref();
     }
 
@@ -69,13 +75,13 @@ mod tests {
 
     #[test]
     fn owned_borrow_borrowed() {
-        let owned = BasicExampleBuf::new("Testing the Buffer");
+        let owned = BasicExampleBuf::from_static("Testing the Buffer");
         let _reference: &BasicExample = owned.borrow();
     }
 
     #[test]
     fn owned_borrow_str() {
-        let owned = BasicExampleBuf::new("Testing the Buffer");
+        let owned = BasicExampleBuf::from_static("Testing the Buffer");
         let _reference: &str = owned.borrow();
     }
 

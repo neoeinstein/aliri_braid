@@ -1,12 +1,15 @@
 use crate::{Orange, OrangeRef};
 use quickcheck_macros::quickcheck;
 use static_assertions::{assert_eq_align, assert_eq_size, assert_eq_size_ptr, assert_eq_size_val};
-use std::{collections::HashSet, convert::TryInto};
+use std::{
+    collections::{BTreeSet, HashSet},
+    convert::TryInto,
+};
 
 #[test]
 pub fn equality_tests() {
-    let x = Orange::new("One");
-    let y = OrangeRef::from_str("One");
+    let x = Orange::from_static("One");
+    let y = OrangeRef::from_static("One");
 
     assert_eq!(x, y);
     assert_eq!(x, *y);
@@ -15,20 +18,20 @@ pub fn equality_tests() {
     assert_eq!(y, &x);
     assert_eq!(*y, x);
 
-    assert_eq!("One", x.clone().into_string());
+    assert_eq!("One", x.clone().take());
     let z = x.clone().into_boxed_ref();
-    assert_eq!(y, z);
-    assert_eq!(z, y);
-    assert_eq!(x, z);
-    assert_eq!(z, x);
+    assert_eq!(y, &*z);
+    assert_eq!(&*z, y);
+    assert_eq!(x, &*z);
+    assert_eq!(&*z, x);
 
     assert_eq!(x, z.into_owned());
 }
 
 #[test]
 pub fn debug_and_display_tests() {
-    let x = Orange::new("One");
-    let y = OrangeRef::from_str("One");
+    let x = Orange::from_static("One");
+    let y = OrangeRef::from_static("One");
 
     assert_eq!("One", x.to_string());
     assert_eq!("One", y.to_string());
@@ -36,6 +39,7 @@ pub fn debug_and_display_tests() {
     assert_eq!("\"One\"", format!("{:?}", y));
 }
 
+#[cfg_attr(miri, ignore = "takes too long on miri")]
 #[quickcheck]
 fn owned_and_borrowed_hashes_are_equivalent(s: String) -> bool {
     use std::collections::hash_map::DefaultHasher;
@@ -91,19 +95,19 @@ pub fn try_from_borrowed_pass() -> Result<(), Box<dyn std::error::Error>> {
 fn can_use_as_hash_keys() {
     let mut map = HashSet::new();
 
-    assert!(map.insert(Orange::new("One")));
-    assert!(map.insert(Orange::new("Seven")));
+    assert!(map.insert(Orange::from_static("One")));
+    assert!(map.insert(Orange::from_static("Seven")));
 
-    assert!(map.contains(OrangeRef::from_str("One")));
-    assert!(map.contains(&Orange::new("One")));
-    assert!(!map.contains(OrangeRef::from_str("Two")));
+    assert!(map.contains(OrangeRef::from_static("One")));
+    assert!(map.contains(&Orange::from_static("One")));
+    assert!(!map.contains(OrangeRef::from_static("Two")));
 
-    assert!(!map.remove(OrangeRef::from_str("Two")));
-    assert!(map.remove(OrangeRef::from_str("One")));
-    assert!(!map.remove(OrangeRef::from_str("One")));
+    assert!(!map.remove(OrangeRef::from_static("Two")));
+    assert!(map.remove(OrangeRef::from_static("One")));
+    assert!(!map.remove(OrangeRef::from_static("One")));
 
-    assert!(map.remove(&Orange::new("Seven")));
-    assert!(!map.remove(OrangeRef::from_str("Seven")));
+    assert!(map.remove(&Orange::from_static("Seven")));
+    assert!(!map.remove(OrangeRef::from_static("Seven")));
 
     assert!(map.is_empty());
 }
@@ -116,14 +120,56 @@ fn can_use_refs_as_hash_keys() {
     assert!(map.insert(OrangeRef::from_str("Seven")));
 
     assert!(map.contains(OrangeRef::from_str("One")));
-    assert!(map.contains(&*Orange::new("One")));
+    assert!(map.contains(&*Orange::from_static("One")));
     assert!(!map.contains(OrangeRef::from_str("Two")));
 
     assert!(!map.remove(OrangeRef::from_str("Two")));
     assert!(map.remove(OrangeRef::from_str("One")));
     assert!(!map.remove(OrangeRef::from_str("One")));
 
-    assert!(map.remove(&*Orange::new("Seven")));
+    assert!(map.remove(&*Orange::from_static("Seven")));
+    assert!(!map.remove(OrangeRef::from_str("Seven")));
+
+    assert!(map.is_empty());
+}
+
+#[test]
+fn can_use_as_btree_keys() {
+    let mut map = BTreeSet::new();
+
+    assert!(map.insert(Orange::from_static("One")));
+    assert!(map.insert(Orange::from_static("Seven")));
+
+    assert!(map.contains(OrangeRef::from_static("One")));
+    assert!(map.contains(&Orange::from_static("One")));
+    assert!(!map.contains(OrangeRef::from_static("Two")));
+
+    assert!(!map.remove(OrangeRef::from_static("Two")));
+    assert!(map.remove(OrangeRef::from_static("One")));
+    assert!(!map.remove(OrangeRef::from_static("One")));
+
+    assert!(map.remove(&Orange::from_static("Seven")));
+    assert!(!map.remove(OrangeRef::from_static("Seven")));
+
+    assert!(map.is_empty());
+}
+
+#[test]
+fn can_use_refs_as_btree_keys() {
+    let mut map = BTreeSet::new();
+
+    assert!(map.insert(OrangeRef::from_str("One")));
+    assert!(map.insert(OrangeRef::from_str("Seven")));
+
+    assert!(map.contains(OrangeRef::from_str("One")));
+    assert!(map.contains(&*Orange::from_static("One")));
+    assert!(!map.contains(OrangeRef::from_str("Two")));
+
+    assert!(!map.remove(OrangeRef::from_str("Two")));
+    assert!(map.remove(OrangeRef::from_str("One")));
+    assert!(!map.remove(OrangeRef::from_str("One")));
+
+    assert!(map.remove(&*Orange::from_static("Seven")));
     assert!(!map.remove(OrangeRef::from_str("Seven")));
 
     assert!(map.is_empty());
@@ -134,7 +180,7 @@ fn verify_serialization_non_validated() -> Result<(), Box<dyn std::error::Error>
     const SOURCE: &str = "Test 🏗";
     const EXPECTED_SERIALIZATION: &str = "\"Test 🏗\"";
 
-    let start = Orange::new(SOURCE);
+    let start = Orange::from_static(SOURCE);
 
     let own_serialized = serde_json::to_string(&start)?;
     assert_eq!(EXPECTED_SERIALIZATION, own_serialized);
@@ -143,11 +189,11 @@ fn verify_serialization_non_validated() -> Result<(), Box<dyn std::error::Error>
     let borrow_serialized = serde_json::to_string(borrow)?;
     assert_eq!(EXPECTED_SERIALIZATION, borrow_serialized);
     let boxed: Box<OrangeRef> = serde_json::from_str(&borrow_serialized)?;
-    assert_eq!(borrow, boxed);
+    assert_eq!(borrow, &*boxed);
     let box_serialized = serde_json::to_string(&boxed)?;
     assert_eq!(EXPECTED_SERIALIZATION, box_serialized);
     let owned: Orange = serde_json::from_str(&box_serialized)?;
-    assert_eq!(boxed, owned);
+    assert_eq!(*boxed, *owned);
 
     assert_eq!(owned, start);
     Ok(())

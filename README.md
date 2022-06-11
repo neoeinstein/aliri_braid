@@ -11,7 +11,7 @@ string values, ensuring that you use them in the right way every time.
 Examples of the documentation and implementations provided for braids are available
 below and in the [`aliri_braid_examples`] crate documentation.
 
-  [`aliri_braid_examples`]: https://docs.rs/aliri_braid_examples/*/aliri_braid_examples
+  [`aliri_braid_examples`]: https://docs.rs/aliri_braid_examples/
 
 ## Usage
 
@@ -26,7 +26,21 @@ use aliri_braid::braid;
 pub struct DatabaseName;
 ```
 
-Once created, braids can be passed around as strongly-typed strings.
+Braids of custom string types are also supported, so long as they implement a set of
+expected traits. If not specified, the type named `String` in the current namespace
+will be used. See the section on [custom string types] for more information.
+
+[custom string types]: #custom-string-types
+
+```rust
+use aliri_braid::braid;
+use smartstring::alias::String;
+
+#[braid]
+pub struct UserId;
+```
+
+Once created, braids can be passed around as strongly-typed, immutable strings.
 
 ```rust
 #
@@ -34,7 +48,7 @@ fn take_strong_string(n: DatabaseName) {}
 fn borrow_strong_string(n: &DatabaseNameRef) {}
 
 #
-let owned = DatabaseName::new("mongo");
+let owned = DatabaseName::new(String::from("mongo"));
 borrow_strong_string(&owned);
 take_strong_string(owned);
 ```
@@ -47,9 +61,9 @@ fn take_raw_string(s: String) {}
 fn borrow_raw_str(s: &str) {}
 
 #
-let owned = DatabaseName::new("mongo");
+let owned = DatabaseName::new(String::from("mongo"));
 borrow_raw_str(owned.as_str());
-take_raw_string(owned.into_string());
+take_raw_string(owned.take());
 ```
 
 By default, the name of the borrowed form will be the same as the owned form
@@ -60,8 +74,8 @@ with `Ref` appended to the end.
 #[braid]
 pub struct DatabaseName;
 
-let owned = DatabaseName::new("mongo");
-let borrowed = DatabaseNameRef::from_str("mongo");
+let owned = DatabaseName::from_static("mongo");
+let borrowed = DatabaseNameRef::from_static("mongo");
 ```
 
 If the name ends with `Buf`, however, then the borrowed form will drop the `Buf`, similar
@@ -73,8 +87,8 @@ to the relationship between
 #[braid]
 pub struct DatabaseNameBuf;
 
-let owned = DatabaseNameBuf::new("mongo");
-let borrowed = DatabaseName::from_str("mongo");
+let owned = DatabaseNameBuf::from_static("mongo");
+let borrowed = DatabaseName::from_static("mongo");
 ```
 
 If a different name is desired, this behavior can be
@@ -86,8 +100,8 @@ parameter.
 #[braid(ref = "TempDb")]
 pub struct DatabaseNameBuf;
 
-let owned = DatabaseNameBuf::new("mongo");
-let borrowed = TempDb::from_str("mongo");
+let owned = DatabaseNameBuf::from_static("mongo");
+let borrowed = TempDb::from_static("mongo");
 let to_owned: DatabaseNameBuf = borrowed.to_owned();
 ```
 
@@ -100,6 +114,22 @@ documentation.
 #[braid(ref_doc = "A temporary reference to a database name")]
 pub struct DatabaseName;
 #
+```
+
+Attributes added to the braid will be applied to both the owned and borrowed forms
+with the exception of `///` and `#[doc = ""]` attributes. To add an attribute to
+only the owned form, use the `owned_attr` parameter. Similarly, use `ref_attr` to
+add an attribute to only the borrowed form.
+
+```rust
+use aliri_braid::braid;
+
+#[braid(
+   owned_attr(must_use = "database name should always be used"),
+   ref_attr(must_use = "created a reference, but never used it"),
+)]
+#[cfg(not(feature = "nightly"))]
+pub struct DatabaseName;
 ```
 
 ## Extensibility
@@ -155,7 +185,7 @@ mod amazon_arn {
 
 pub use amazon_arn::{AmazonArnBuf, AmazonArn};
 
-let x = AmazonArnBuf::new("arn:aws:iam::123456789012:user/Development");
+let x = AmazonArnBuf::from_static("arn:aws:iam::123456789012:user/Development");
 assert_eq!("iam", x.get_service());
 ```
 
@@ -207,6 +237,11 @@ violating invariants. Thus, for the strongest guarantees, it is recommended to u
 system to further control access to the interior values held by the braided type as
 described in the section on [encapsulation](#encapsulation).
 
+As a convenience, `from_static` functions are provided that accept `&'static str`. For fallible
+braids and the owned form of normalized braids, this function will panic if the value is not
+valid. For borrowed form of normalized braids, the function will panic if the value is not
+normalized.
+
 ```rust
 #
 #[derive(Debug, PartialEq, Eq)]
@@ -227,13 +262,17 @@ impl aliri_braid::Validator for NonRootUsername {
     }
 }
 
-assert!(NonRootUsername::new("").is_err());
-assert!(NonRootUsername::new("root").is_err());
-assert!(NonRootUsername::new("nobody").is_ok());
+assert!(NonRootUsername::new("".to_string()).is_err());
+assert!(NonRootUsername::new("root".to_string()).is_err());
+assert!(NonRootUsername::new("nobody".to_string()).is_ok());
+
+NonRootUsername::from_static("nobody");
 
 assert!(NonRootUsernameRef::from_str("").is_err());
 assert!(NonRootUsernameRef::from_str("root").is_err());
 assert!(NonRootUsernameRef::from_str("nobody").is_ok());
+
+NonRootUsernameRef::from_static("nobody");
 ```
 
 Foreign validators can also be used by specifying the name of the type that
@@ -251,13 +290,17 @@ impl aliri_braid::Validator for UsernameValidator {
     /* … */
 }
 
-assert!(NonRootUsername::new("").is_err());
-assert!(NonRootUsername::new("root").is_err());
-assert!(NonRootUsername::new("nobody").is_ok());
+assert!(NonRootUsername::new("".to_string()).is_err());
+assert!(NonRootUsername::new("root".to_string()).is_err());
+assert!(NonRootUsername::new("nobody".to_string()).is_ok());
+
+NonRootUsername::from_static("nobody");
 
 assert!(NonRootUsernameRef::from_str("").is_err());
 assert!(NonRootUsernameRef::from_str("root").is_err());
 assert!(NonRootUsernameRef::from_str("nobody").is_ok());
+
+NonRootUsernameRef::from_static("nobody");
 ```
 
 ### Normalization
@@ -268,6 +311,10 @@ boundary. In this case, the `.from_str()` function on the borrowed form will ret
 normalization and conversion to an owned value was required. In cases where the incoming
 value is expected to already be normalized, the `.from_normalized_str()` function can
 be used. This function will return an error if the value required normalization.
+
+Note that when implementing [`Validator`] for a braided type, the `validate` method
+must ensure that the value is already in normalized form and return an error if it is
+not.
 
 When using `serde` to deserialze directly to the borrowed form, care must be taken, as
 only already normalized values will be able to be deserialized. If normalization is
@@ -286,6 +333,17 @@ pub struct InvalidHeaderName;
 #[braid(normalizer)]
 pub struct HeaderName;
 
+impl aliri_braid::Validator for HeaderName {
+    type Error = InvalidHeaderName;
+    fn validate(s: &str) -> Result<(), Self::Error> {
+        if s.is_empty() || s.as_bytes().iter().any(|&b| b'A' <= b && b <= b'Z') {
+            Err(InvalidHeaderName)
+        } else {
+            Ok(())
+        }
+    }
+}
+
 impl aliri_braid::Normalizer for HeaderName {
     type Error = InvalidHeaderName;
     fn normalize(s: &str) -> Result<Cow<str>, Self::Error> {
@@ -299,9 +357,12 @@ impl aliri_braid::Normalizer for HeaderName {
     }
 }
 
-assert!(HeaderName::new("").is_err());
-assert_eq!("mixedcase", HeaderName::new("MixedCase").unwrap().as_str());
-assert_eq!("lowercase", HeaderName::new("lowercase").unwrap().as_str());
+assert!(HeaderName::new("".to_string()).is_err());
+assert_eq!("mixedcase", HeaderName::new("MixedCase".to_string()).unwrap().as_str());
+assert_eq!("lowercase", HeaderName::new("lowercase".to_string()).unwrap().as_str());
+
+assert_eq!("mixedcase", HeaderName::from_static("MixedCase").as_str());
+assert_eq!("lowercase", HeaderName::from_static("lowercase").as_str());
 
 assert!(HeaderNameRef::from_str("").is_err());
 assert_eq!("mixedcase", HeaderNameRef::from_str("MixedCase").unwrap().as_str());
@@ -310,6 +371,8 @@ assert_eq!("lowercase", HeaderNameRef::from_str("lowercase").unwrap().as_str());
 assert!(HeaderNameRef::from_normalized_str("").is_err());
 assert!(HeaderNameRef::from_normalized_str("MixedCase").is_err());
 assert_eq!("lowercase", HeaderNameRef::from_normalized_str("lowercase").unwrap().as_str());
+
+assert_eq!("lowercase", HeaderNameRef::from_static("lowercase").as_str());
 ```
 
 ### Unchecked creation
@@ -360,7 +423,7 @@ If you find violations of your guarantees, you can look specifically for uses of
 #
 #
 unsafe {
-    NonRootUsername::new_unchecked("");
+    NonRootUsername::new_unchecked(String::from(""));
     NonRootUsernameRef::from_str_unchecked("root");
 }
 ```
@@ -375,10 +438,12 @@ For the `Owned` type
 * [`std::fmt::Display`]
 * [`std::hash::Hash`]
 * [`std::cmp::Eq`]
+* [`std::cmp::Ord`]
 * [`std::cmp::PartialEq<Owned>`]
 * [`std::cmp::PartialEq<Borrowed>`]
 * [`std::cmp::PartialEq<&Borrowed>`]
 * [`std::cmp::PartialEq<Box<Borrowed>>`]
+* [`std::cmp::PartialOrd`]
 * [`std::convert::AsRef<Borrowed>`]
 * [`std::convert::AsRef<str>`]
 * [`std::convert::From<&Borrowed>`]
@@ -403,10 +468,12 @@ For the `Borrowed` type
 * [`std::fmt::Display`]
 * [`std::hash::Hash`]
 * [`std::cmp::Eq`]
+* [`std::cmp::Ord`]
 * [`std::cmp::PartialEq<Owned>`]
 * [`std::cmp::PartialEq<Borrowed>`]
 * [`std::cmp::PartialEq<&Borrowed>`]
 * [`std::cmp::PartialEq<Box<Borrowed>>`]
+* [`std::cmp::PartialOrd`]
 * [`std::convert::From<&Cow<Borrowed>>`]
 * [`std::borrow::ToOwned`] where `Owned = Owned`
 
@@ -441,39 +508,43 @@ required to treat a value as an untyped string, whether `.as_str()`, `.to_string
 ### Omitting `Clone`
 
 For some types, it may be desirable to prevent arbitrary cloning of a type. In that case,
-the `omit_clone` parameter can be used to prevent automatically deriving [`Clone`][std::clone::Clone].
+the `clone` parameter can be used to prevent automatically deriving [`Clone`][std::clone::Clone].
 
 ```rust
 #
-#[braid(omit_clone)]
+#[braid(clone = "omit")]
 pub struct Sensitive;
 
 assert_not_impl_any!(Sensitive: Clone);
 ```
 
-### Custom `Display` and `Debug`
+### Custom `Display`, `Debug`, and `PartialOrd`/`Ord` implementations
 
-By default, the implementations of [`Display`][std::fmt::Display] and [`Debug`][std::fmt::Debug]
+By default, the implementations of [`Display`][std::fmt::Display], [`Debug`][std::fmt::Debug]
+[`PartialOrd`][std::cmp::PartialOrd], and [`Ord`][std::cmp::Ord]
 provided by a braid delegate directly to the underlying [`String`] or [`str`] types. If a
 custom implementation is desired, the automatic derivation of these traits can be controlled
-by the `display_impl` and `debug_impl` parameters. Both of these parameters accept one of
-`auto`, `owned`, or `none`. By default, the `auto` derivation mode is used.
+by the `display`, `debug`, and `ord` parameters. Both of these parameters accept one of
+`impl`, `owned`, or `omit`. By default, the `impl` derivation mode is used.
 
 The modes have the following effects:
 
-* `auto`: Format the owned and reference type transparently as the underlying string (slice) type.
+* `impl`: Format the owned and reference type transparently as the underlying string (slice) type.
 * `owned`: Automatically provide an owned implementation that transparently delegates to the
   implementation of the borrowed form. The consumer must provide their custom implementation on
   the borrowed form.
-* `none`: No implementations are provided for the owned or borrowed forms. These must be
+* `omit`: No implementations are provided for the owned or borrowed forms. These must be
   implemented by the consumer if they are desired.
+
+Note: Omitting a `PartialOrd` and `Ord` implementation will make the braid unable to be
+used as a key in a `BTreeMap` or `BTreeSet`.
 
 As an example:
 
 ```rust
 use std::fmt;
 #
-#[braid(omit_clone, display_impl = "owned", debug_impl = "owned")]
+#[braid(clone = "omit", display = "owned", debug = "owned")]
 pub struct Sensitive;
 
 impl fmt::Debug for SensitiveRef {
@@ -488,7 +559,7 @@ impl fmt::Display for SensitiveRef {
     }
 }
 
-let owned = Sensitive::new("secret value");
+let owned = Sensitive::from_static("secret value");
 assert_eq!("SENSITIVE", format!("{:?}", owned));
 assert_eq!("SENSITIVE DISPLAY", format!("{}", owned));
 assert_eq!("secret value", owned.as_str());
@@ -513,7 +584,7 @@ can be automatically generated by including `serde` in the argument list for the
 #[braid(serde)]
 pub struct Username;
 
-let username = Username::new("root");
+let username = Username::from_static("root");
 let json = serde_json::to_string(&username).unwrap();
 let new_username: Username = serde_json::from_str(&json).unwrap();
 ```
@@ -551,6 +622,87 @@ assert!(serde_json::from_str::<&UsernameRef>("\"root\"").is_err());
 assert!(serde_json::from_str::<&UsernameRef>("\"nobody\"").is_ok());
 ```
 
+## Custom string types
+
+The `braid` macro can be used to define a custom string type that wraps types
+other than the standard [`String`]. This allows defining a braid that is backed
+by a type that offers small-string optimizations, such as [`SmartString`].
+
+[`SmartString`]: https://docs.rs/smartstring/*/smartstring/struct.SmartString.html
+
+```rust
+use smartstring::{SmartString, LazyCompact};
+
+#[braid]
+pub struct UserId(SmartString<LazyCompact>);
+```
+
+It can also be used to wrap a [`ByteString`], which is a string backed by
+[`Bytes`], which may be useful if the type is primarily used in contexts
+where a zero-copy implementation is preferred.
+
+[`ByteString`]: https://docs.rs/bytestring/*/bytestring/struct.ByteString.html
+[`Bytes`]: https://docs.rs/bytes/*/bytes/struct.Bytes.html
+
+```rust
+use bytestring::ByteString;
+
+#[braid]
+pub struct ZeroCopyIdentifier(ByteString);
+```
+
+### Requirements
+
+In order to be used as a custom string type, the type must implement the
+following traits:
+
+* [`std::clone::Clone`] (unless `clone` is `omit`)
+* [`std::fmt::Debug`] (unless `debug` is `omit`)
+* [`std::fmt::Display`] (unless `display` is `omit`)
+* [`std::cmp::Eq`]
+* [`std::cmp::PartialEq`]
+* [`std::hash::Hash`]
+* [`std::cmp::Ord`] (unless `ord` is `omit`)
+* [`std::cmp::PartialOrd`] (unless `ord` is `omit`)
+* [`serde::Serialize`] (unless `serde` is `omit`)
+* [`serde::Deserialize`] (unless `serde` is `omit`)
+* [`std::convert::From<&str>`]
+* [`std::convert::From<Box<str>>`]
+* [`std::convert::AsRef<str>`]
+* [`std::convert::Into<String>`]
+
+[`serde::Serialize`]: https://docs.rs/serde/*/serde/trait.Serialize.html
+[`serde::Deserialize`]: https://docs.rs/serde/*/serde/trait.Deserialize.html
+
+## `no_std` support
+
+Braids can be implemented in `no_std` environments with `alloc`. By adding the
+`no_std` parameter to the macro, all impls will reference the `core` or `alloc`
+crates instead of the `std` crate, as appropriate.
+
+```rust
+extern crate alloc;
+
+use aliri_braid::braid;
+use alloc::string::String;
+
+#[braid(no_std)]
+pub struct NoStdLibWrapper;
+#
+```
+
+In environments without an allocator, `braid_ref` can be used to create a
+reference-only braid. In order to remove the `alloc` dependency in `aliri_braid`,
+specify `default-features = "false"` in the `Cargo.toml` file.
+
+```rust
+use aliri_braid::braid_ref;
+
+#[braid_ref(no_std)]
+pub struct NoStdValue;
+#
+```
+
 ## Safety
 
 Braid uses limited `unsafe` in order to be able to reinterpret string slices
@@ -565,4 +717,3 @@ code comments.
 If strict adherence to forbid unsafe code is required, then the types can be
 segregated into an accessory crate without the prohibition, and then consumed
 safely from crates that otherwise forbid unsafe code.
-

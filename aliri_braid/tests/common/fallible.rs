@@ -1,12 +1,15 @@
 use crate::{Validated, ValidatedBuf};
 use quickcheck_macros::quickcheck;
 use static_assertions::{assert_eq_align, assert_eq_size, assert_eq_size_ptr, assert_eq_size_val};
-use std::{collections::HashSet, convert::TryInto};
+use std::{
+    collections::{BTreeSet, HashSet},
+    convert::TryInto,
+};
 
 #[test]
 pub fn equality_tests() -> Result<(), Box<dyn std::error::Error>> {
-    let x = ValidatedBuf::new("One")?;
-    let y = Validated::from_str("One")?;
+    let x = ValidatedBuf::from_static("One");
+    let y = Validated::from_static("One");
     assert_eq!(x, y);
     assert_eq!(x, *y);
     assert_eq!(&x, y);
@@ -14,12 +17,12 @@ pub fn equality_tests() -> Result<(), Box<dyn std::error::Error>> {
     assert_eq!(y, &x);
     assert_eq!(*y, x);
 
-    assert_eq!("One", x.clone().into_string());
+    assert_eq!("One", x.clone().take());
     let z = x.clone().into_boxed_ref();
-    assert_eq!(y, z);
-    assert_eq!(z, y);
-    assert_eq!(x, z);
-    assert_eq!(z, x);
+    assert_eq!(y, &*z);
+    assert_eq!(&*z, y);
+    assert_eq!(x, &*z);
+    assert_eq!(&*z, x);
 
     assert_eq!(x, z.into_owned());
 
@@ -66,18 +69,17 @@ pub fn try_from_borrowed_fails() {
 }
 
 #[test]
-fn debug_and_display_tests() -> Result<(), Box<dyn std::error::Error>> {
-    let x = ValidatedBuf::new("One")?;
-    let y = Validated::from_str("One")?;
+fn debug_and_display_tests() {
+    let x = ValidatedBuf::from_static("One");
+    let y = Validated::from_static("One");
 
     assert_eq!("One", x.to_string());
     assert_eq!("One", y.to_string());
     assert_eq!("\"One\"", format!("{:?}", x));
     assert_eq!("\"One\"", format!("{:?}", y));
-
-    Ok(())
 }
 
+#[cfg_attr(miri, ignore = "takes too long on miri")]
 #[quickcheck]
 fn owned_and_borrowed_hashes_are_equivalent(s: String) -> quickcheck::TestResult {
     use std::collections::hash_map::DefaultHasher;
@@ -111,49 +113,87 @@ fn owned_and_borrowed_hashes_are_equivalent(s: String) -> quickcheck::TestResult
 }
 
 #[test]
-fn can_use_as_hash_keys() -> Result<(), Box<dyn std::error::Error>> {
+fn can_use_as_hash_keys() {
     let mut map = HashSet::new();
 
-    assert!(map.insert(ValidatedBuf::new("One")?));
-    assert!(map.insert(ValidatedBuf::new("Seven")?));
+    assert!(map.insert(ValidatedBuf::from_static("One")));
+    assert!(map.insert(ValidatedBuf::from_static("Seven")));
 
-    assert!(map.contains(Validated::from_str("One")?));
-    assert!(map.contains(&ValidatedBuf::new("One")?));
-    assert!(!map.contains(Validated::from_str("Two")?));
+    assert!(map.contains(Validated::from_static("One")));
+    assert!(map.contains(&ValidatedBuf::from_static("One")));
+    assert!(!map.contains(Validated::from_static("Two")));
 
-    assert!(!map.remove(Validated::from_str("Two")?));
-    assert!(map.remove(Validated::from_str("One")?));
-    assert!(!map.remove(Validated::from_str("One")?));
+    assert!(!map.remove(Validated::from_static("Two")));
+    assert!(map.remove(Validated::from_static("One")));
+    assert!(!map.remove(Validated::from_static("One")));
 
-    assert!(map.remove(&ValidatedBuf::new("Seven")?));
-    assert!(!map.remove(Validated::from_str("Seven")?));
+    assert!(map.remove(&ValidatedBuf::from_static("Seven")));
+    assert!(!map.remove(Validated::from_static("Seven")));
 
     assert!(map.is_empty());
-
-    Ok(())
 }
 
 #[test]
-fn can_use_refs_as_hash_keys() -> Result<(), Box<dyn std::error::Error>> {
+fn can_use_refs_as_hash_keys() {
     let mut map = HashSet::new();
 
-    assert!(map.insert(Validated::from_str("One")?));
-    assert!(map.insert(Validated::from_str("Seven")?));
+    assert!(map.insert(Validated::from_static("One")));
+    assert!(map.insert(Validated::from_static("Seven")));
 
-    assert!(map.contains(Validated::from_str("One")?));
-    assert!(map.contains(&*ValidatedBuf::new("One")?));
-    assert!(!map.contains(Validated::from_str("Two")?));
+    assert!(map.contains(Validated::from_static("One")));
+    assert!(map.contains(&*ValidatedBuf::from_static("One")));
+    assert!(!map.contains(Validated::from_static("Two")));
 
-    assert!(!map.remove(Validated::from_str("Two")?));
-    assert!(map.remove(Validated::from_str("One")?));
-    assert!(!map.remove(Validated::from_str("One")?));
+    assert!(!map.remove(Validated::from_static("Two")));
+    assert!(map.remove(Validated::from_static("One")));
+    assert!(!map.remove(Validated::from_static("One")));
 
-    assert!(map.remove(&*ValidatedBuf::new("Seven")?));
-    assert!(!map.remove(Validated::from_str("Seven")?));
+    assert!(map.remove(&*ValidatedBuf::from_static("Seven")));
+    assert!(!map.remove(Validated::from_static("Seven")));
 
     assert!(map.is_empty());
+}
 
-    Ok(())
+#[test]
+fn can_use_as_btree_keys() {
+    let mut map = BTreeSet::new();
+
+    assert!(map.insert(ValidatedBuf::from_static("One")));
+    assert!(map.insert(ValidatedBuf::from_static("Seven")));
+
+    assert!(map.contains(Validated::from_static("One")));
+    assert!(map.contains(&ValidatedBuf::from_static("One")));
+    assert!(!map.contains(Validated::from_static("Two")));
+
+    assert!(!map.remove(Validated::from_static("Two")));
+    assert!(map.remove(Validated::from_static("One")));
+    assert!(!map.remove(Validated::from_static("One")));
+
+    assert!(map.remove(&ValidatedBuf::from_static("Seven")));
+    assert!(!map.remove(Validated::from_static("Seven")));
+
+    assert!(map.is_empty());
+}
+
+#[test]
+fn can_use_refs_as_btree_keys() {
+    let mut map = BTreeSet::new();
+
+    assert!(map.insert(Validated::from_static("One")));
+    assert!(map.insert(Validated::from_static("Seven")));
+
+    assert!(map.contains(Validated::from_static("One")));
+    assert!(map.contains(&*ValidatedBuf::from_static("One")));
+    assert!(!map.contains(Validated::from_static("Two")));
+
+    assert!(!map.remove(Validated::from_static("Two")));
+    assert!(map.remove(Validated::from_static("One")));
+    assert!(!map.remove(Validated::from_static("One")));
+
+    assert!(map.remove(&*ValidatedBuf::from_static("Seven")));
+    assert!(!map.remove(Validated::from_static("Seven")));
+
+    assert!(map.is_empty());
 }
 
 #[test]
@@ -192,7 +232,7 @@ fn verify_serialization_pass_boxed() -> Result<(), Box<dyn std::error::Error>> {
     const SERIALIZATION: &str = "\"Test \u{037E}\"";
     let expected = Validated::from_str("Test \u{037E}")?;
     let actual: Box<Validated> = serde_json::from_str(SERIALIZATION)?;
-    assert_eq!(expected, actual);
+    assert_eq!(expected, &*actual);
     Ok(())
 }
 

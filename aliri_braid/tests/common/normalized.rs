@@ -1,11 +1,14 @@
 use crate::{Normalized, NormalizedBuf};
 use quickcheck_macros::quickcheck;
 use static_assertions::{assert_eq_align, assert_eq_size, assert_eq_size_ptr, assert_eq_size_val};
-use std::{collections::HashSet, convert::TryInto};
+use std::{
+    collections::{BTreeSet, HashSet},
+    convert::TryInto,
+};
 
 #[test]
 pub fn equality_tests() -> Result<(), Box<dyn std::error::Error>> {
-    let x = NormalizedBuf::new("One Two")?;
+    let x = NormalizedBuf::from_static("One Two");
     let y = &*Normalized::from_str("One Two")?;
     assert_eq!(x, y);
     assert_eq!(x, *y);
@@ -14,12 +17,12 @@ pub fn equality_tests() -> Result<(), Box<dyn std::error::Error>> {
     assert_eq!(y, &x);
     assert_eq!(*y, x);
 
-    assert_eq!("OneTwo", x.clone().into_string());
+    assert_eq!("OneTwo", x.clone().take());
     let z = x.clone().into_boxed_ref();
-    assert_eq!(y, z);
-    assert_eq!(z, y);
-    assert_eq!(x, z);
-    assert_eq!(z, x);
+    assert_eq!(y, &*z);
+    assert_eq!(&*z, y);
+    assert_eq!(x, &*z);
+    assert_eq!(&*z, x);
 
     assert_eq!(x, z.into_owned());
 
@@ -86,10 +89,10 @@ pub fn try_from_borrowed_fails() {
 }
 
 #[test]
-fn debug_and_display_tests() -> Result<(), Box<dyn std::error::Error>> {
-    let x = NormalizedBuf::new("One Two")?;
-    let y = Normalized::from_str("One Two")?;
-    let z = Normalized::from_str("OneTwo")?;
+fn debug_and_display_tests() {
+    let x = NormalizedBuf::from_static("One Two");
+    let y = Normalized::from_str("One Two").unwrap();
+    let z = Normalized::from_static("OneTwo");
 
     assert_eq!("OneTwo", x.to_string());
     assert_eq!("OneTwo", y.to_string());
@@ -97,10 +100,9 @@ fn debug_and_display_tests() -> Result<(), Box<dyn std::error::Error>> {
     assert_eq!("\"OneTwo\"", format!("{:?}", x));
     assert_eq!("\"OneTwo\"", format!("{:?}", y));
     assert_eq!("\"OneTwo\"", format!("{:?}", z));
-
-    Ok(())
 }
 
+#[cfg_attr(miri, ignore = "takes too long on miri")]
 #[quickcheck]
 fn owned_and_borrowed_hashes_are_equivalent(s: String) -> quickcheck::TestResult {
     use std::collections::hash_map::DefaultHasher;
@@ -134,49 +136,87 @@ fn owned_and_borrowed_hashes_are_equivalent(s: String) -> quickcheck::TestResult
 }
 
 #[test]
-fn can_use_as_hash_keys() -> Result<(), Box<dyn std::error::Error>> {
+fn can_use_as_hash_keys() {
     let mut map = HashSet::new();
 
-    assert!(map.insert(NormalizedBuf::new("One Two")?));
-    assert!(map.insert(NormalizedBuf::new("SevenEight")?));
+    assert!(map.insert(NormalizedBuf::from_static("One Two")));
+    assert!(map.insert(NormalizedBuf::from_static("SevenEight")));
 
-    assert!(map.contains(&*Normalized::from_str("One Two")?));
-    assert!(map.contains(&NormalizedBuf::new("One Two")?));
-    assert!(!map.contains(&*Normalized::from_str("Two Three")?));
+    assert!(map.contains(&*Normalized::from_str("One Two").unwrap()));
+    assert!(map.contains(&NormalizedBuf::from_static("One Two")));
+    assert!(!map.contains(&*Normalized::from_str("Two Three").unwrap()));
 
-    assert!(!map.remove(&*Normalized::from_str("Two Three")?));
-    assert!(map.remove(&*Normalized::from_str("OneTwo")?));
-    assert!(!map.remove(&*Normalized::from_str("One Two")?));
+    assert!(!map.remove(&*Normalized::from_str("Two Three").unwrap()));
+    assert!(map.remove(&*Normalized::from_static("OneTwo")));
+    assert!(!map.remove(&*Normalized::from_str("One Two").unwrap()));
 
-    assert!(map.remove(&NormalizedBuf::new("Seven Eight")?));
-    assert!(!map.remove(&*Normalized::from_str("SevenEight")?));
+    assert!(map.remove(&NormalizedBuf::from_static("Seven Eight")));
+    assert!(!map.remove(&*Normalized::from_static("SevenEight")));
 
     assert!(map.is_empty());
-
-    Ok(())
 }
 
 #[test]
-fn can_use_refs_as_hash_keys() -> Result<(), Box<dyn std::error::Error>> {
+fn can_use_refs_as_hash_keys() {
     let mut map = HashSet::new();
 
-    assert!(map.insert(Normalized::from_str("One Two")?));
-    assert!(map.insert(Normalized::from_str("SevenEight")?));
+    assert!(map.insert(Normalized::from_static("OneTwo")));
+    assert!(map.insert(Normalized::from_static("SevenEight")));
 
-    assert!(map.contains(&*Normalized::from_str("One Two")?));
-    assert!(map.contains(&*NormalizedBuf::new("One Two")?));
-    assert!(!map.contains(&*Normalized::from_str("Two Three")?));
+    assert!(map.contains(&*Normalized::from_str("One Two").unwrap()));
+    assert!(map.contains(&*NormalizedBuf::from_static("One Two")));
+    assert!(!map.contains(&*Normalized::from_str("Two Three").unwrap()));
 
-    assert!(!map.remove(&*Normalized::from_str("Two Three")?));
-    assert!(map.remove(&*Normalized::from_str("OneTwo")?));
-    assert!(!map.remove(&*Normalized::from_str("One Two")?));
+    assert!(!map.remove(&*Normalized::from_str("Two Three").unwrap()));
+    assert!(map.remove(&*Normalized::from_static("OneTwo")));
+    assert!(!map.remove(&*Normalized::from_str("One Two").unwrap()));
 
-    assert!(map.remove(&*NormalizedBuf::new("Seven Eight")?));
-    assert!(!map.remove(&*Normalized::from_str("SevenEight")?));
+    assert!(map.remove(&*NormalizedBuf::from_static("Seven Eight")));
+    assert!(!map.remove(&*Normalized::from_static("SevenEight")));
 
     assert!(map.is_empty());
+}
 
-    Ok(())
+#[test]
+fn can_use_as_btree_keys() {
+    let mut map = BTreeSet::new();
+
+    assert!(map.insert(NormalizedBuf::from_static("One Two")));
+    assert!(map.insert(NormalizedBuf::from_static("SevenEight")));
+
+    assert!(map.contains(&*Normalized::from_str("One Two").unwrap()));
+    assert!(map.contains(&NormalizedBuf::from_static("One Two")));
+    assert!(!map.contains(&*Normalized::from_str("Two Three").unwrap()));
+
+    assert!(!map.remove(&*Normalized::from_str("Two Three").unwrap()));
+    assert!(map.remove(&*Normalized::from_static("OneTwo")));
+    assert!(!map.remove(&*Normalized::from_str("One Two").unwrap()));
+
+    assert!(map.remove(&NormalizedBuf::from_static("Seven Eight")));
+    assert!(!map.remove(&*Normalized::from_static("SevenEight")));
+
+    assert!(map.is_empty());
+}
+
+#[test]
+fn can_use_refs_as_btree_keys() {
+    let mut map = BTreeSet::new();
+
+    assert!(map.insert(Normalized::from_static("OneTwo")));
+    assert!(map.insert(Normalized::from_static("SevenEight")));
+
+    assert!(map.contains(&*Normalized::from_str("One Two").unwrap()));
+    assert!(map.contains(&*NormalizedBuf::from_static("One Two")));
+    assert!(!map.contains(&*Normalized::from_str("Two Three").unwrap()));
+
+    assert!(!map.remove(&*Normalized::from_str("Two Three").unwrap()));
+    assert!(map.remove(&*Normalized::from_static("OneTwo")));
+    assert!(!map.remove(&*Normalized::from_str("One Two").unwrap()));
+
+    assert!(map.remove(&*NormalizedBuf::from_static("Seven Eight")));
+    assert!(!map.remove(&*Normalized::from_static("SevenEight")));
+
+    assert!(map.is_empty());
 }
 
 #[test]
@@ -215,7 +255,7 @@ fn verify_serialization_pass_boxed_valid_but_non_normal() -> Result<(), Box<dyn 
     const SERIALIZATION: &str = "\"Test \u{037E}\"";
     let expected = &*Normalized::from_str("Test\u{037E}")?;
     let actual: Box<Normalized> = serde_json::from_str(SERIALIZATION)?;
-    assert_eq!(expected, actual);
+    assert_eq!(expected, &*actual);
     Ok(())
 }
 
@@ -243,7 +283,7 @@ fn verify_serialization_pass_boxed() -> Result<(), Box<dyn std::error::Error>> {
     const SERIALIZATION: &str = "\"Test\u{037E}\"";
     let expected = &*Normalized::from_str("Test\u{037E}")?;
     let actual: Box<Normalized> = serde_json::from_str(SERIALIZATION)?;
-    assert_eq!(expected, actual);
+    assert_eq!(expected, &*actual);
     Ok(())
 }
 
@@ -368,4 +408,4 @@ fn check_owned_size_val() {
     assert_eq_size_val!(s, y);
 }
 
-assert_core_impls!(NormalizedBuf => Normalized where NormalizationError = crate::InvalidData);
+assert_core_impls!(NormalizedBuf => Normalized where NormalizationError = crate::InvalidData, ValidationError = crate::InvalidData);

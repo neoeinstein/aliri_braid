@@ -1,5 +1,7 @@
-use crate::symbol::*;
 use quote::ToTokens;
+
+pub const VALIDATOR: &str = "validator";
+pub const NORMALIZER: &str = "normalizer";
 
 pub enum CheckMode {
     None,
@@ -14,43 +16,15 @@ impl Default for CheckMode {
 }
 
 impl CheckMode {
-    pub fn try_set_validator(&mut self, validator: syn::Type) -> Result<(), String> {
-        if matches!(self, Self::None) {
-            *self = Self::Validate(validator);
-            return Ok(());
+    pub fn serde_err_handler(&self) -> Option<proc_macro2::TokenStream> {
+        match self {
+            Self::None => None,
+            _ => Some(quote::quote! {.map_err(<D::Error as ::serde::de::Error>::custom)?}),
         }
-
-        let err_desc = if matches!(self, Self::Validate(_)) {
-            format!("{} can only be specified once", VALIDATOR)
-        } else {
-            format!(
-                "only one of {} and {} can be specified at a time",
-                VALIDATOR, NORMALIZER,
-            )
-        };
-
-        Err(err_desc)
-    }
-
-    pub fn try_set_normalizer(&mut self, normalizer: syn::Type) -> Result<(), String> {
-        if matches!(self, Self::None) {
-            *self = Self::Normalize(normalizer);
-            return Ok(());
-        }
-
-        let err_desc = if matches!(self, Self::Normalize(_)) {
-            format!("{} can only be specified once", NORMALIZER)
-        } else {
-            format!(
-                "only one of {} and {} can be specified at a time",
-                VALIDATOR, NORMALIZER,
-            )
-        };
-
-        Err(err_desc)
     }
 }
 
+#[derive(Clone)]
 pub enum IndefiniteCheckMode {
     None,
     Validate(Option<syn::Type>),
