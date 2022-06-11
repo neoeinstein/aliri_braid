@@ -692,7 +692,8 @@ pub struct NoStdLibWrapper;
 ```
 
 In environments without an allocator, `braid_ref` can be used to create a
-reference-only braid.
+reference-only braid. In order to remove the `alloc` dependency in `aliri_braid`,
+specify `default-features = "false"` in the `Cargo.toml` file.
 
 ```rust
 use aliri_braid::braid_ref;
