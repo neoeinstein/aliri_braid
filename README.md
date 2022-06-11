@@ -11,7 +11,7 @@ string values, ensuring that you use them in the right way every time.
 Examples of the documentation and implementations provided for braids are available
 below and in the [`aliri_braid_examples`] crate documentation.
 
-  [`aliri_braid_examples`]: https://docs.rs/aliri_braid_examples/
+[`aliri_braid_examples`]: https://docs.rs/aliri_braid_examples/
 
 ## Usage
 
@@ -43,11 +43,9 @@ pub struct UserId;
 Once created, braids can be passed around as strongly-typed, immutable strings.
 
 ```rust
-#
 fn take_strong_string(n: DatabaseName) {}
 fn borrow_strong_string(n: &DatabaseNameRef) {}
 
-#
 let owned = DatabaseName::new(String::from("mongo"));
 borrow_strong_string(&owned);
 take_strong_string(owned);
@@ -56,11 +54,9 @@ take_strong_string(owned);
 A braid can also be untyped for use in stringly-typed interfaces.
 
 ```rust
-#
 fn take_raw_string(s: String) {}
 fn borrow_raw_str(s: &str) {}
 
-#
 let owned = DatabaseName::new(String::from("mongo"));
 borrow_raw_str(owned.as_str());
 take_raw_string(owned.take());
@@ -70,7 +66,6 @@ By default, the name of the borrowed form will be the same as the owned form
 with `Ref` appended to the end.
 
 ```rust
-#
 #[braid]
 pub struct DatabaseName;
 
@@ -83,7 +78,6 @@ to the relationship between
 [`PathBuf`][std::path::PathBuf] and [`Path`][std::path::Path].
 
 ```rust
-#
 #[braid]
 pub struct DatabaseNameBuf;
 
@@ -96,7 +90,6 @@ overridden by specifying the name of the reference type to create using the `ref
 parameter.
 
 ```rust
-#
 #[braid(ref = "TempDb")]
 pub struct DatabaseNameBuf;
 
@@ -110,10 +103,8 @@ If a custom doc comment is desired, the `ref_doc` parameter allows supplying cus
 documentation.
 
 ```rust
-#
 #[braid(ref_doc = "A temporary reference to a database name")]
 pub struct DatabaseName;
-#
 ```
 
 Attributes added to the braid will be applied to both the owned and borrowed forms
@@ -141,7 +132,6 @@ As a basic example, here is a type built to hold Amazon ARNs. The type has been
 extended to support some mutation and introspection.
 
 ```rust
-#
 #[braid]
 pub struct AmazonArnBuf;
 
@@ -180,7 +170,6 @@ mod amazon_arn {
     pub struct AmazonArnBuf;
 
     /* Additional impls that need access to the inner values */
-#
 }
 
 pub use amazon_arn::{AmazonArnBuf, AmazonArn};
@@ -200,11 +189,6 @@ compile, because `data` will go out of scope and be dropped at the end of
 the block creating `ex_ref`.
 
 ```compile_fail
-# use aliri_braid::braid;
-#
-# #[braid]
-# pub struct DatabaseName;
-#
 let ex_ref = {
     let data = DatabaseName::new("test string");
     DatabaseNameRef::from_str(data.as_str())
@@ -243,7 +227,6 @@ valid. For borrowed form of normalized braids, the function will panic if the va
 normalized.
 
 ```rust
-#
 #[derive(Debug, PartialEq, Eq)]
 pub struct InvalidUsername;
 // Error implementation elided
@@ -279,8 +262,6 @@ Foreign validators can also be used by specifying the name of the type that
 implements the validation logic.
 
 ```rust
-#
-#
 #[braid(validator = "UsernameValidator")]
 pub struct NonRootUsername;
 
@@ -307,12 +288,12 @@ NonRootUsernameRef::from_static("nobody");
 
 Braided strings can also have enforced normalization, which is carried out at the creation
 boundary. In this case, the `.from_str()` function on the borrowed form will return a
-[`Cow`][std::borrow::Cow]`<Borrowed>`, which can be inspected to determine whether
+[`Cow<Borrowed>`][std::borrow::Cow], which can be inspected to determine whether
 normalization and conversion to an owned value was required. In cases where the incoming
 value is expected to already be normalized, the `.from_normalized_str()` function can
 be used. This function will return an error if the value required normalization.
 
-Note that when implementing [`Validator`] for a braided type, the `validate` method
+Note that when implementing `Validator` for a braided type, the `validate` method
 must ensure that the value is already in normalized form and return an error if it is
 not.
 
@@ -336,7 +317,7 @@ pub struct HeaderName;
 impl aliri_braid::Validator for HeaderName {
     type Error = InvalidHeaderName;
     fn validate(s: &str) -> Result<(), Self::Error> {
-        if s.is_empty() || s.as_bytes().iter().any(|&b| b'A' <= b && b <= b'Z') {
+        if s.is_empty() || !s.is_ascii() || s.as_bytes().iter().any(|&b| b'A' <= b && b <= b'Z') {
             Err(InvalidHeaderName)
         } else {
             Ok(())
@@ -345,9 +326,8 @@ impl aliri_braid::Validator for HeaderName {
 }
 
 impl aliri_braid::Normalizer for HeaderName {
-    type Error = InvalidHeaderName;
     fn normalize(s: &str) -> Result<Cow<str>, Self::Error> {
-        if !s.is_ascii() || s.is_empty() {
+        if s.is_empty() || !s.is_ascii() {
             Err(InvalidHeaderName)
         } else if s.as_bytes().iter().any(|&b| b'A' <= b && b <= b'Z') {
             Ok(Cow::Owned(s.to_ascii_lowercase()))
@@ -385,32 +365,6 @@ constraints are violated, undefined behavior could result when downstream consum
 on these constraints being upheld.
 
 ```compile_fail
-# use aliri_braid::braid;
-#
-# #[derive(Debug, PartialEq, Eq)]
-# pub struct InvalidUsername;
-# // Error implementation elided
-# impl std::fmt::Display for InvalidUsername {
-#     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-#         f.write_str("invalid username")
-#     }
-# }
-# impl std::error::Error for InvalidUsername {}
-#
-# #[braid(validator)]
-# pub struct NonRootUsername;
-#
-# impl aliri_braid::Validator for NonRootUsername {
-#     type Error = InvalidUsername;
-#     fn validate(s: &str) -> Result<(), Self::Error> {
-#         if s.is_empty() || s.eq_ignore_ascii_case("root") {
-#             Err(InvalidUsername)
-#         } else {
-#             Ok(())
-#         }
-#     }
-# }
-#
 NonRootUsername::new_unchecked("");
 NonRootUsernameRef::from_str_unchecked("nobody");
 ```
@@ -418,10 +372,6 @@ NonRootUsernameRef::from_str_unchecked("nobody");
 If you find violations of your guarantees, you can look specifically for uses of `unsafe`.
 
 ```rust
-#
-#
-#
-#
 unsafe {
     NonRootUsername::new_unchecked(String::from(""));
     NonRootUsernameRef::from_str_unchecked("root");
@@ -511,7 +461,6 @@ For some types, it may be desirable to prevent arbitrary cloning of a type. In t
 the `clone` parameter can be used to prevent automatically deriving [`Clone`][std::clone::Clone].
 
 ```rust
-#
 #[braid(clone = "omit")]
 pub struct Sensitive;
 
@@ -522,7 +471,7 @@ assert_not_impl_any!(Sensitive: Clone);
 
 By default, the implementations of [`Display`][std::fmt::Display], [`Debug`][std::fmt::Debug]
 [`PartialOrd`][std::cmp::PartialOrd], and [`Ord`][std::cmp::Ord]
-provided by a braid delegate directly to the underlying [`String`] or [`str`] types. If a
+provided by a braid delegate directly to the underlying `String` or `str` types. If a
 custom implementation is desired, the automatic derivation of these traits can be controlled
 by the `display`, `debug`, and `ord` parameters. Both of these parameters accept one of
 `impl`, `owned`, or `omit`. By default, the `impl` derivation mode is used.
@@ -543,7 +492,6 @@ As an example:
 
 ```rust
 use std::fmt;
-#
 #[braid(clone = "omit", display = "owned", debug = "owned")]
 pub struct Sensitive;
 
@@ -575,12 +523,11 @@ assert_eq!("secret value", borrowed.as_str());
 [`Serialize`] and [`Deserialize`] implementations from the [`serde`] crate
 can be automatically generated by including `serde` in the argument list for the macro.
 
-  [`serde`]: https://docs.rs/serde/*/serde/
-  [`Serialize`]: https://docs.rs/serde/*/serde/trait.Serialize.html
-  [`Deserialize`]: https://docs.rs/serde/*/serde/trait.Deserialize.html
+[`serde`]: https://docs.rs/serde/*/serde/
+[`Serialize`]: https://docs.rs/serde/*/serde/trait.Serialize.html
+[`Deserialize`]: https://docs.rs/serde/*/serde/trait.Deserialize.html
 
 ```rust
-#
 #[braid(serde)]
 pub struct Username;
 
@@ -594,7 +541,6 @@ validation. This automatic validation has the benefit of easing use with _Serde_
 still protecting the integrity of the type.
 
 ```rust
-#
 #[derive(Debug, PartialEq, Eq)]
 pub struct InvalidUsername;
 // Error implementation elided
@@ -625,7 +571,7 @@ assert!(serde_json::from_str::<&UsernameRef>("\"nobody\"").is_ok());
 ## Custom string types
 
 The `braid` macro can be used to define a custom string type that wraps types
-other than the standard [`String`]. This allows defining a braid that is backed
+other than the standard `String`. This allows defining a braid that is backed
 by a type that offers small-string optimizations, such as [`SmartString`].
 
 [`SmartString`]: https://docs.rs/smartstring/*/smartstring/struct.SmartString.html
@@ -688,7 +634,6 @@ use alloc::string::String;
 
 #[braid(no_std)]
 pub struct NoStdLibWrapper;
-#
 ```
 
 In environments without an allocator, `braid_ref` can be used to create a
@@ -700,13 +645,12 @@ use aliri_braid::braid_ref;
 
 #[braid_ref(no_std)]
 pub struct NoStdValue;
-#
 ```
 
 ## Safety
 
 Braid uses limited `unsafe` in order to be able to reinterpret string slices
-([`&str`]) as the borrowed form. Because this functionality is provided as a
+(`&str`) as the borrowed form. Because this functionality is provided as a
 macro, using the `#![forbid(unsafe_code)]` lint level on a crate that generates
 braids will result in compiler errors. Instead, the crate can be annotated with
 `#![deny(unsafe_code)]`, which allows for overrides as appropriate. The functions
@@ -717,3 +661,43 @@ code comments.
 If strict adherence to forbid unsafe code is required, then the types can be
 segregated into an accessory crate without the prohibition, and then consumed
 safely from crates that otherwise forbid unsafe code.
+
+[std::path::PathBuf]: https://doc.rust-lang.org/std/path/struct.PathBuf.html
+[std::path::Path]: https://doc.rust-lang.org/std/path/struct.Path.html
+[std::clone::Clone]: https://doc.rust-lang.org/std/clone/trait.Clone.html
+[std::borrow::Cow]: https://doc.rust-lang.org/std/borrow/enum.Cow.html
+[std::fmt::Debug]: https://doc.rust-lang.org/std/fmt/trait.Debug.html
+[std::fmt::Display]: https://doc.rust-lang.org/std/fmt/trait.Display.html
+[std::cmp::Ord]: https://doc.rust-lang.org/std/cmp/trait.Ord.html
+[std::cmp::PartialOrd]: https://doc.rust-lang.org/std/cmp/trait.PartialOrd.html
+
+[`std::clone::Clone`]: https://doc.rust-lang.org/std/clone/trait.Clone.html
+[`std::fmt::Debug`]: https://doc.rust-lang.org/std/fmt/trait.Debug.html
+[`std::fmt::Display`]: https://doc.rust-lang.org/std/fmt/trait.Display.html
+[`std::hash::Hash`]: https://doc.rust-lang.org/std/hash/trait.Hash.html
+[`std::cmp::Eq`]: https://doc.rust-lang.org/std/cmp/trait.Eq.html
+[`std::cmp::Ord`]: https://doc.rust-lang.org/std/cmp/trait.Ord.html
+[`std::cmp::PartialEq<Owned>`]: https://doc.rust-lang.org/std/cmp/trait.PartialEq.html
+[`std::cmp::PartialEq<Borrowed>`]: https://doc.rust-lang.org/std/cmp/trait.PartialEq.html
+[`std::cmp::PartialEq<&Borrowed>`]: https://doc.rust-lang.org/std/cmp/trait.PartialEq.html
+[`std::cmp::PartialEq<Box<Borrowed>>`]: https://doc.rust-lang.org/std/cmp/trait.PartialEq.html
+[`std::cmp::PartialOrd`]: https://doc.rust-lang.org/std/cmp/trait.PartialOrd.html
+[`std::convert::AsRef<Borrowed>`]: https://doc.rust-lang.org/std/convert/trait.AsRef.html
+[`std::convert::AsRef<str>`]: https://doc.rust-lang.org/std/convert/trait.AsRef.html
+[`std::convert::From<&Borrowed>`]: https://doc.rust-lang.org/std/convert/trait.From.html
+[`std::convert::From<Box<Borrowed>>`]: https://doc.rust-lang.org/std/convert/trait.From.html
+[`std::convert::From<Cow<Borrowed>>`]: https://doc.rust-lang.org/std/convert/trait.From.html
+[`std::borrow::Borrow<Borrowed>`]: https://doc.rust-lang.org/std/borrow/trait.Borrow.html
+[`std::borrow::Borrow<str>`]: https://doc.rust-lang.org/std/borrow/trait.Borrow.html
+[`std::borrow::ToOwned`]: https://doc.rust-lang.org/std/borrow/trait.ToOwned.html
+[`std::str::FromStr`]: https://doc.rust-lang.org/std/str/trait.FromStr.html
+[`std::ops::Deref`]: https://doc.rust-lang.org/std/ops/trait.Deref.html
+[`std::convert::From<String>`]: https://doc.rust-lang.org/std/convert/trait.From.html
+[`std::convert::From<&str>`]: https://doc.rust-lang.org/std/convert/trait.From.html
+[`std::convert::From<&Cow<Borrowed>>`]: https://doc.rust-lang.org/std/convert/trait.From.html
+[`std::convert::From<Owned>`]: https://doc.rust-lang.org/std/convert/trait.From.html
+[`std::convert::From<&Borrowed>`]: https://doc.rust-lang.org/std/convert/trait.From.html
+[`std::convert::TryFrom<String>`]: https://doc.rust-lang.org/std/convert/trait.TryFrom.html
+[`std::convert::TryFrom<&str>`]: https://doc.rust-lang.org/std/convert/trait.TryFrom.html
+[`std::convert::From<Box<str>>`]: https://doc.rust-lang.org/std/convert/trait.From.html
+[`std::convert::Into<String>`]: https://doc.rust-lang.org/std/convert/trait.Into.html
