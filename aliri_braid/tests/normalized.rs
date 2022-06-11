@@ -12,8 +12,7 @@ impl fmt::Display for InvalidString {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Self::EmptyString => f.write_str("string cannot be empty"),
-            Self::InvalidCharacter =>
-                f.write_str("string contains invalid uppercase character"),
+            Self::InvalidCharacter => f.write_str("string contains invalid uppercase character"),
         }
     }
 }
