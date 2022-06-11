@@ -829,6 +829,9 @@
 extern crate alloc;
 
 /// A validator that can verify a given input is valid given certain preconditions
+///
+/// If the type can be normalized, this implementation should also validate that
+/// the value is _already in normalized form_.
 pub trait Validator {
     /// The error produced when the string is invalid
     type Error;
