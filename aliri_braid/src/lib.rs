@@ -86,6 +86,9 @@
 //! to the relationship between
 //! [`PathBuf`][std::path::PathBuf] and [`Path`][std::path::Path].
 //!
+//! [std::path::PathBuf]: https://doc.rust-lang.org/std/path/struct.PathBuf.html
+//! [std::path::Path]: https://doc.rust-lang.org/std/path/struct.Path.html
+//!
 //! ```
 //!# use aliri_braid::braid;
 //!#
@@ -355,7 +358,7 @@
 //!
 //! Braided strings can also have enforced normalization, which is carried out at the creation
 //! boundary. In this case, the `.from_str()` function on the borrowed form will return a
-//! [`Cow<Borrowed>`][std::borrow::Cow], which can be inspected to determine whether
+//! [`Cow<Borrowed>`][alloc::borrow::Cow], which can be inspected to determine whether
 //! normalization and conversion to an owned value was required. In cases where the incoming
 //! value is expected to already be normalized, the `.from_normalized_str()` function can
 //! be used. This function will return an error if the value required normalization.
@@ -509,69 +512,69 @@
 //! By default, the following traits will be automatically implemented.
 //!
 //! For the `Owned` type
-//! * [`std::clone::Clone`]
-//! * [`std::fmt::Debug`]
-//! * [`std::fmt::Display`]
-//! * [`std::hash::Hash`]
-//! * [`std::cmp::Eq`]
-//! * [`std::cmp::Ord`]
-//! * [`std::cmp::PartialEq<Owned>`]
-//! * [`std::cmp::PartialEq<Borrowed>`]
-//! * [`std::cmp::PartialEq<&Borrowed>`]
-//! * [`std::cmp::PartialEq<Box<Borrowed>>`]
-//! * [`std::cmp::PartialOrd`]
-//! * [`std::convert::AsRef<Borrowed>`]
-//! * [`std::convert::AsRef<str>`]
-//! * [`std::convert::From<&Borrowed>`]
-//! * [`std::convert::From<Box<Borrowed>>`]
-//! * [`std::convert::From<Cow<Borrowed>>`]
-//! * [`std::borrow::Borrow<Borrowed>`]
-//! * [`std::str::FromStr`]
-//! * [`std::ops::Deref`] where `Target = Borrowed`
+//! * [`core::clone::Clone`]
+//! * [`core::fmt::Debug`]
+//! * [`core::fmt::Display`]
+//! * [`core::hash::Hash`]
+//! * [`core::cmp::Eq`]
+//! * [`core::cmp::Ord`]
+//! * [`core::cmp::PartialEq<Owned>`]
+//! * [`core::cmp::PartialEq<Borrowed>`]
+//! * [`core::cmp::PartialEq<&Borrowed>`]
+//! * [`core::cmp::PartialEq<Box<Borrowed>>`]
+//! * [`core::cmp::PartialOrd`]
+//! * [`core::convert::AsRef<Borrowed>`]
+//! * [`core::convert::AsRef<str>`]
+//! * [`core::convert::From<&Borrowed>`]
+//! * [`core::convert::From<Box<Borrowed>>`]
+//! * [`core::convert::From<Cow<Borrowed>>`]
+//! * [`core::borrow::Borrow<Borrowed>`]
+//! * [`core::str::FromStr`]
+//! * [`core::ops::Deref`] where `Target = Borrowed`
 //!
 //! Additionally, unvalidated owned types implement
-//! * [`std::convert::From<String>`]
-//! * [`std::convert::From<&str>`]
+//! * [`core::convert::From<String>`]
+//! * [`core::convert::From<&str>`]
 //!
 //! Validated and normalized owned types will instead implement
-//! * [`std::convert::TryFrom<String>`]
-//! * [`std::convert::TryFrom<&str>`]
+//! * [`core::convert::TryFrom<String>`]
+//! * [`core::convert::TryFrom<&str>`]
 //!
 //! When normalized, the above conversions will normalize values.
 //!
 //! For the `Borrowed` type
-//! * [`std::fmt::Debug`]
-//! * [`std::fmt::Display`]
-//! * [`std::hash::Hash`]
-//! * [`std::cmp::Eq`]
-//! * [`std::cmp::Ord`]
-//! * [`std::cmp::PartialEq<Owned>`]
-//! * [`std::cmp::PartialEq<Borrowed>`]
-//! * [`std::cmp::PartialEq<&Borrowed>`]
-//! * [`std::cmp::PartialEq<Box<Borrowed>>`]
-//! * [`std::cmp::PartialOrd`]
-//! * [`std::convert::From<&Cow<Borrowed>>`]
-//! * [`std::borrow::ToOwned`] where `Owned = Owned`
+//! * [`core::fmt::Debug`]
+//! * [`core::fmt::Display`]
+//! * [`core::hash::Hash`]
+//! * [`core::cmp::Eq`]
+//! * [`core::cmp::Ord`]
+//! * [`core::cmp::PartialEq<Owned>`]
+//! * [`core::cmp::PartialEq<Borrowed>`]
+//! * [`core::cmp::PartialEq<&Borrowed>`]
+//! * [`core::cmp::PartialEq<Box<Borrowed>>`]
+//! * [`core::cmp::PartialOrd`]
+//! * [`core::convert::From<&Cow<Borrowed>>`]
+//! * [`alloc::borrow::ToOwned`] where `Owned = Owned`
 //!
 //! Additionally, unvalidated borrowed types implement
-//! * [`std::convert::From<&str>`]
+//! * [`core::convert::From<&str>`]
 //!
 //! Validated and normalize borrowed types will instead implement
-//! * [`std::convert::TryFrom<&str>`]
+//! * [`core::convert::TryFrom<&str>`]
 //!
 //! For `Cow<'static, Borrowed>`
-//! * [`std::convert::From<Owned>`]
+//! * [`core::convert::From<Owned>`]
 //!
 //! For `Cow<Borrowed>`
-//! * [`std::convert::From<&Borrowed>`]
+//! * [`core::convert::From<&Borrowed>`]
 //!
 //! For `Box<Borrowed>`
-//! * [`std::convert::From<Owned>`]
+//! * [`core::convert::From<Owned>`]
 //!
 //! The above conversion will fail if the value is not already normalized.
 //!
 //! Types that are not normalized will additionally implement
-//! * [`std::borrow::Borrow<str>`]
+//! * [`core::borrow::Borrow<str>`]
 //!
 //! `Borrow<str>` cannot be implemented for normalized braids because equality and hashing
 //! of equivalent braid values will have differing results for equality, which violates the
@@ -584,7 +587,7 @@
 //! ## Omitting `Clone`
 //!
 //! For some types, it may be desirable to prevent arbitrary cloning of a type. In that case,
-//! the `clone` parameter can be used to prevent automatically deriving [`Clone`][std::clone::Clone].
+//! the `clone` parameter can be used to prevent automatically deriving [`Clone`][core::clone::Clone].
 //!
 //! ```
 //!# use aliri_braid::braid;
@@ -598,12 +601,13 @@
 //!
 //! ## Custom `Display`, `Debug`, and `PartialOrd`/`Ord` implementations
 //!
-//! By default, the implementations of [`Display`][std::fmt::Display], [`Debug`][std::fmt::Debug]
-//! [`PartialOrd`][std::cmp::PartialOrd], and [`Ord`][std::cmp::Ord]
-//! provided by a braid delegate directly to the underlying [`String`] or [`str`] types. If a
-//! custom implementation is desired, the automatic derivation of these traits can be controlled
-//! by the `display`, `debug`, and `ord` parameters. Both of these parameters accept one of
-//! `impl`, `owned`, or `omit`. By default, the `impl` derivation mode is used.
+//! By default, the implementations of [`Display`][core::fmt::Display], [`Debug`][core::fmt::Debug]
+//! [`PartialOrd`][core::cmp::PartialOrd], and [`Ord`][core::cmp::Ord]
+//! provided by a braid delegate directly to the underlying [`String`][alloc::string::String]
+//! or [`str`] types. If a custom implementation is desired, the automatic derivation of these
+//! traits can be controlled by the `display`, `debug`, and `ord` parameters. Both of these
+//! parameters accept one of `impl`, `owned`, or `omit`. By default, the `impl` derivation
+//! mode is used.
 //!
 //! The modes have the following effects:
 //!
@@ -713,7 +717,7 @@
 //! # Custom string types
 //!
 //! The `braid` macro can be used to define a custom string type that wraps types
-//! other than the standard [`String`]. This allows defining a braid that is backed
+//! other than the standard `String`. This allows defining a braid that is backed
 //! by a type that offers small-string optimizations, such as [`SmartString`].
 //!
 //! [`SmartString`]: https://docs.rs/smartstring/*/smartstring/struct.SmartString.html
@@ -746,20 +750,20 @@
 //! In order to be used as a custom string type, the type must implement the
 //! following traits:
 //!
-//! * [`std::clone::Clone`] (unless `clone` is `omit`)
-//! * [`std::fmt::Debug`] (unless `debug` is `omit`)
-//! * [`std::fmt::Display`] (unless `display` is `omit`)
-//! * [`std::cmp::Eq`]
-//! * [`std::cmp::PartialEq`]
-//! * [`std::hash::Hash`]
-//! * [`std::cmp::Ord`] (unless `ord` is `omit`)
-//! * [`std::cmp::PartialOrd`] (unless `ord` is `omit`)
+//! * [`core::clone::Clone`] (unless `clone` is `omit`)
+//! * [`core::fmt::Debug`] (unless `debug` is `omit`)
+//! * [`core::fmt::Display`] (unless `display` is `omit`)
+//! * [`core::cmp::Eq`]
+//! * [`core::cmp::PartialEq`]
+//! * [`core::hash::Hash`]
+//! * [`core::cmp::Ord`] (unless `ord` is `omit`)
+//! * [`core::cmp::PartialOrd`] (unless `ord` is `omit`)
 //! * [`serde::Serialize`] (unless `serde` is `omit`)
 //! * [`serde::Deserialize`] (unless `serde` is `omit`)
-//! * [`std::convert::From<&str>`]
-//! * [`std::convert::From<Box<str>>`]
-//! * [`std::convert::AsRef<str>`]
-//! * [`std::convert::Into<String>`]
+//! * [`core::convert::From<&str>`]
+//! * [`core::convert::From<Box<str>>`]
+//! * [`core::convert::AsRef<str>`]
+//! * [`core::convert::Into<String>`]
 //!
 //! [`serde::Serialize`]: https://docs.rs/serde/*/serde/trait.Serialize.html
 //! [`serde::Deserialize`]: https://docs.rs/serde/*/serde/trait.Deserialize.html
