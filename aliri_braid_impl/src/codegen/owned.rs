@@ -24,6 +24,7 @@ impl<'a> OwnedCodeGen<'a> {
 
     fn infallible_constructor(&self) -> proc_macro2::TokenStream {
         let doc_comment = format!("Constructs a new {}", self.ty);
+        let static_doc_comment = format!("{doc_comment} from a static reference");
 
         let param = self.field.name.input_name();
         let create = self.field.self_constructor();
@@ -41,7 +42,7 @@ impl<'a> OwnedCodeGen<'a> {
             }
 
             #[inline]
-            #[doc = #doc_comment]
+            #[doc = #static_doc_comment]
             #[track_caller]
             pub fn from_static(raw: &'static str) -> Self {
                 ::#alloc::borrow::ToOwned::to_owned(#ref_ty::from_str(raw))
@@ -56,10 +57,15 @@ impl<'a> OwnedCodeGen<'a> {
             self.ty, validator_tokens
         );
 
+        let static_doc_comment = format!(
+            "Constructs a new {} from a static reference if it conforms to [`{}`]",
+            self.ty, validator_tokens
+        );
+
         let doc_comment_unsafe = format!(
             "Constructs a new {} without validation\n\
         \n\
-        ## Safety\n\
+        # Safety\n\
         \n\
         Consumers of this function must ensure that values conform to [`{}`]. \
         Failure to maintain this invariant may lead to undefined behavior.",
@@ -90,9 +96,9 @@ impl<'a> OwnedCodeGen<'a> {
             }
 
             #[inline]
-            #[doc = #doc_comment]
+            #[doc = #static_doc_comment]
             #[doc = ""]
-            #[doc = "## Panics"]
+            #[doc = "# Panics"]
             #[doc = ""]
             #[doc = "This function will panic if the provided raw string is not valid."]
             #[track_caller]
@@ -109,10 +115,15 @@ impl<'a> OwnedCodeGen<'a> {
             self.ty, normalizer_tokens
         );
 
+        let static_doc_comment = format!(
+            "Constructs a new {} from a static reference if it conforms to [`{}`], normalizing the input",
+            self.ty, normalizer_tokens
+        );
+
         let doc_comment_unsafe = format!(
             "Constructs a new {} without validation or normalization\n\
             \n\
-            ## Safety\n\
+            # Safety\n\
             \n\
             Consumers of this function must ensure that values conform to [`{}`] and \
             are in normalized form. Failure to maintain this invariant may lead to \
@@ -145,9 +156,9 @@ impl<'a> OwnedCodeGen<'a> {
             }
 
             #[inline]
-            #[doc = #doc_comment]
+            #[doc = #static_doc_comment]
             #[doc = ""]
-            #[doc = "## Panics"]
+            #[doc = "# Panics"]
             #[doc = ""]
             #[doc = "This function will panic if the provided raw string is not valid."]
             #[track_caller]
@@ -159,7 +170,7 @@ impl<'a> OwnedCodeGen<'a> {
 
     fn make_into_boxed_ref(&self) -> proc_macro2::TokenStream {
         let doc = format!(
-            "Converts this `{}` into a [`Box`]`<`[`{}`]`>`\n\
+            "Converts this `{}` into a [`Box<{}>`]\n\
             \n\
             This will drop any excess capacity.",
             self.ty,
@@ -219,6 +230,7 @@ impl<'a> OwnedCodeGen<'a> {
         let into_string = self.make_take();
 
         quote! {
+            #[automatically_derived]
             impl #name {
                 #constructor
                 #into_boxed_ref
@@ -234,6 +246,7 @@ impl<'a> OwnedCodeGen<'a> {
         let alloc = self.std_lib.alloc();
 
         quote! {
+            #[automatically_derived]
             impl ::#core::convert::From<&'_ #ref_ty> for #ty {
                 #[inline]
                 fn from(s: &#ref_ty) -> Self {
@@ -241,6 +254,7 @@ impl<'a> OwnedCodeGen<'a> {
                 }
             }
 
+            #[automatically_derived]
             impl ::#core::borrow::Borrow<#ref_ty> for #ty {
                 #[inline]
                 fn borrow(&self) -> &#ref_ty {
@@ -248,6 +262,7 @@ impl<'a> OwnedCodeGen<'a> {
                 }
             }
 
+            #[automatically_derived]
             impl ::#core::convert::AsRef<#ref_ty> for #ty {
                 #[inline]
                 fn as_ref(&self) -> &#ref_ty {
@@ -255,6 +270,7 @@ impl<'a> OwnedCodeGen<'a> {
                 }
             }
 
+            #[automatically_derived]
             impl ::#core::convert::AsRef<str> for #ty {
                 #[inline]
                 fn as_ref(&self) -> &str {
@@ -263,6 +279,7 @@ impl<'a> OwnedCodeGen<'a> {
             }
 
 
+            #[automatically_derived]
             impl ::#core::convert::From<#ty> for ::#alloc::boxed::Box<#ref_ty> {
                 #[inline]
                 fn from(r: #ty) -> Self {
@@ -270,6 +287,7 @@ impl<'a> OwnedCodeGen<'a> {
                 }
             }
 
+            #[automatically_derived]
             impl ::#core::convert::From<::#alloc::boxed::Box<#ref_ty>> for #ty {
                 #[inline]
                 fn from(r: ::#alloc::boxed::Box<#ref_ty>) -> Self {
@@ -277,6 +295,7 @@ impl<'a> OwnedCodeGen<'a> {
                 }
             }
 
+            #[automatically_derived]
             impl<'a> ::#core::convert::From<::#alloc::borrow::Cow<'a, #ref_ty>> for #ty {
                 #[inline]
                 fn from(r: ::#alloc::borrow::Cow<'a, #ref_ty>) -> Self {
@@ -287,6 +306,7 @@ impl<'a> OwnedCodeGen<'a> {
                 }
             }
 
+            #[automatically_derived]
             impl<'a> ::#core::convert::From<#ty> for ::#alloc::borrow::Cow<'a, #ref_ty> {
                 #[inline]
                 fn from(owned: #ty) -> Self {
@@ -304,6 +324,7 @@ impl<'a> OwnedCodeGen<'a> {
         let core = self.std_lib.core();
 
         quote! {
+            #[automatically_derived]
             impl ::#core::convert::From<#field_ty> for #ty {
                 #[inline]
                 fn from(s: #field_ty) -> Self {
@@ -311,6 +332,7 @@ impl<'a> OwnedCodeGen<'a> {
                 }
             }
 
+            #[automatically_derived]
             impl ::#core::convert::From<&'_ str> for #ty {
                 #[inline]
                 fn from(s: &str) -> Self {
@@ -318,6 +340,7 @@ impl<'a> OwnedCodeGen<'a> {
                 }
             }
 
+            #[automatically_derived]
             impl ::#core::str::FromStr for #ty {
                 type Err = ::#core::convert::Infallible;
 
@@ -327,6 +350,7 @@ impl<'a> OwnedCodeGen<'a> {
                 }
             }
 
+            #[automatically_derived]
             impl ::#core::borrow::Borrow<str> for #ty {
                 #[inline]
                 fn borrow(&self) -> &str {
@@ -334,6 +358,7 @@ impl<'a> OwnedCodeGen<'a> {
                 }
             }
 
+            #[automatically_derived]
             impl ::#core::ops::Deref for #ty {
                 type Target = #ref_ty;
 
@@ -373,6 +398,7 @@ impl<'a> OwnedCodeGen<'a> {
         let unchecked_safety_comment = Self::unchecked_safety_comment(false);
 
         quote! {
+            #[automatically_derived]
             impl ::#core::convert::TryFrom<#field_ty> for #ty {
                 type Error = #validator::Error;
 
@@ -382,6 +408,7 @@ impl<'a> OwnedCodeGen<'a> {
                 }
             }
 
+            #[automatically_derived]
             impl ::#core::convert::TryFrom<&'_ str> for #ty {
                 type Error = #validator::Error;
 
@@ -392,6 +419,7 @@ impl<'a> OwnedCodeGen<'a> {
                 }
             }
 
+            #[automatically_derived]
             impl ::#core::str::FromStr for #ty {
                 type Err = #validator::Error;
 
@@ -402,6 +430,7 @@ impl<'a> OwnedCodeGen<'a> {
                 }
             }
 
+            #[automatically_derived]
             impl ::#core::borrow::Borrow<str> for #ty {
                 #[inline]
                 fn borrow(&self) -> &str {
@@ -409,6 +438,7 @@ impl<'a> OwnedCodeGen<'a> {
                 }
             }
 
+            #[automatically_derived]
             impl ::#core::ops::Deref for #ty {
                 type Target = #ref_ty;
 
@@ -432,6 +462,7 @@ impl<'a> OwnedCodeGen<'a> {
         let unchecked_safety_comment = Self::unchecked_safety_comment(true);
 
         quote! {
+            #[automatically_derived]
             impl ::#core::convert::TryFrom<#field_ty> for #ty {
                 type Error = #validator::Error;
 
@@ -441,6 +472,7 @@ impl<'a> OwnedCodeGen<'a> {
                 }
             }
 
+            #[automatically_derived]
             impl ::#core::convert::TryFrom<&'_ str> for #ty {
                 type Error = #validator::Error;
 
@@ -451,6 +483,7 @@ impl<'a> OwnedCodeGen<'a> {
                 }
             }
 
+            #[automatically_derived]
             impl ::#core::str::FromStr for #ty {
                 type Err = #validator::Error;
 
@@ -461,6 +494,7 @@ impl<'a> OwnedCodeGen<'a> {
                 }
             }
 
+            #[automatically_derived]
             impl ::#core::ops::Deref for #ty {
                 type Target = #ref_ty;
 

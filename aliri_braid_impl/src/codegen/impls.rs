@@ -143,6 +143,7 @@ impl ToImpl for ImplDisplay {
         let core = gen.std_lib.core();
         self.0.map_owned(|| {
             quote! {
+                #[automatically_derived]
                 impl<'a> ::#core::fmt::Display for #ty {
                     #[inline]
                     fn fmt(&self, f: &mut ::#core::fmt::Formatter) -> ::#core::fmt::Result {
@@ -159,6 +160,7 @@ impl ToImpl for ImplDisplay {
         let core = gen.std_lib.core();
         self.0.map_ref(|| {
             quote! {
+                #[automatically_derived]
                 impl ::#core::fmt::Display for #ty {
                     #[inline]
                     fn fmt(&self, f: &mut ::#core::fmt::Formatter) -> ::#core::fmt::Result {
@@ -192,6 +194,7 @@ impl ToImpl for ImplDebug {
         let core = gen.std_lib.core();
         self.0.map_owned(|| {
             quote! {
+                #[automatically_derived]
                 impl<'a> ::#core::fmt::Debug for #ty {
                     #[inline]
                     fn fmt(&self, f: &mut ::#core::fmt::Formatter) -> ::#core::fmt::Result {
@@ -208,6 +211,7 @@ impl ToImpl for ImplDebug {
         let core = gen.std_lib.core();
         self.0.map_ref(|| {
             quote! {
+                #[automatically_derived]
                 impl ::#core::fmt::Debug for #ty {
                     #[inline]
                     fn fmt(&self, f: &mut ::#core::fmt::Formatter) -> ::#core::fmt::Result {
@@ -240,6 +244,7 @@ impl ToImpl for ImplOrd {
         let field_name = gen.field.name;
         let core = gen.std_lib.core();
         self.0.map_owned(|| quote! {
+            #[automatically_derived]
             impl ::#core::cmp::Ord for #ty {
                 #[inline]
                 fn cmp(&self, other: &Self) -> ::#core::cmp::Ordering {
@@ -247,6 +252,7 @@ impl ToImpl for ImplOrd {
                 }
             }
 
+            #[automatically_derived]
             impl ::#core::cmp::PartialOrd for #ty {
                 #[inline]
                 fn partial_cmp(&self, other: &Self) -> ::#core::option::Option<::#core::cmp::Ordering> {
@@ -286,6 +292,7 @@ impl ToImpl for ImplSerde {
             let wrapped_type = &gen.field.ty;
 
             quote! {
+                #[automatically_derived]
                 impl ::serde::Serialize for #name {
                     fn serialize<S: ::serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
                         <#wrapped_type as ::serde::Serialize>::serialize(&self.#field_name, serializer)
@@ -293,6 +300,7 @@ impl ToImpl for ImplSerde {
                 }
 
                 #[allow(clippy::needless_question_mark)]
+                #[automatically_derived]
                 impl<'de> ::serde::Deserialize<'de> for #name {
                     fn deserialize<D: ::serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
                         let raw = <#wrapped_type as ::serde::Deserialize<'de>>::deserialize(deserializer)?;
@@ -314,6 +322,7 @@ impl ToImpl for ImplSerde {
 
             let deserialize_boxed = gen.owned_ty.map(|owned_ty| {
                 quote! {
+                    #[automatically_derived]
                     impl<'de> ::serde::Deserialize<'de> for ::#alloc::boxed::Box<#ty> {
                         fn deserialize<D: ::serde::Deserializer<'de>>(deserializer: D) -> ::#core::result::Result<Self, D::Error> {
                             let owned = <#owned_ty as ::serde::Deserialize<'de>>::deserialize(deserializer)?;
@@ -329,7 +338,7 @@ impl ToImpl for ImplSerde {
                     \n\
                     This deserializer _requires_ that the value already be in normalized form. \
                     If values may require normalization, then deserialized as [`{owned}`] or \
-                    [`Cow`][{alloc}::borrow::Cow]`<{ty}>` instead.",
+                    [`Cow<{ty}>`][{alloc}::borrow::Cow] instead.",
                     ty = ty.to_token_stream(),
                     owned = gen.owned_ty.expect("normalize not available if no owned").to_token_stream(),
                 );
@@ -344,6 +353,7 @@ impl ToImpl for ImplSerde {
                     //
                     #[doc = #deserialize_doc]
                     #[allow(clippy::needless_question_mark)]
+                    #[automatically_derived]
                     impl<'de: 'a, 'a> ::serde::Deserialize<'de> for &'a #ty {
                         fn deserialize<D: ::serde::Deserializer<'de>>(deserializer: D) -> ::#core::result::Result<Self, D::Error> {
                             let raw = <&str as ::serde::Deserialize<'de>>::deserialize(deserializer)?;
@@ -354,6 +364,7 @@ impl ToImpl for ImplSerde {
             } else {
                 quote! {
                     #[allow(clippy::needless_question_mark)]
+                    #[automatically_derived]
                     impl<'de: 'a, 'a> ::serde::Deserialize<'de> for &'a #ty {
                         fn deserialize<D: ::serde::Deserializer<'de>>(deserializer: D) -> ::#core::result::Result<Self, D::Error> {
                             let raw = <&str as ::serde::Deserialize<'de>>::deserialize(deserializer)?;
@@ -364,6 +375,7 @@ impl ToImpl for ImplSerde {
             };
 
             quote! {
+                #[automatically_derived]
                 impl ::serde::Serialize for #ty {
                     fn serialize<S: ::serde::Serializer>(&self, serializer: S) -> ::#core::result::Result<S::Ok, S::Error> {
                         <str as ::serde::Serialize>::serialize(self.as_str(), serializer)

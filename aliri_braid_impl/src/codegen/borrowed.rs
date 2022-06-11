@@ -23,6 +23,7 @@ impl<'a> RefCodeGen<'a> {
         let inherent = self.check_inherent();
 
         quote! {
+            #[automatically_derived]
             impl #ty {
                 #inherent
 
@@ -145,6 +146,13 @@ impl<'a> RefCodeGen<'a> {
             validator.to_token_stream(),
         );
 
+        let static_doc_comment = format!(
+            "Transparently reinterprets the static string slice as a strongly-typed {} \
+            if it conforms to [`{}`]",
+            self.ident,
+            validator.to_token_stream(),
+        );
+
         let doc_comment_unsafe = format!(
             "Transparently reinterprets the string slice as a strongly-typed {} \
             without validating",
@@ -201,9 +209,9 @@ impl<'a> RefCodeGen<'a> {
             }
 
             #[inline]
-            #[doc = #doc_comment]
+            #[doc = #static_doc_comment]
             #[doc = ""]
-            #[doc = "## Panics"]
+            #[doc = "# Panics"]
             #[doc = ""]
             #[doc = "This function will panic if the provided raw string is not valid."]
             #[track_caller]
@@ -223,6 +231,13 @@ impl<'a> RefCodeGen<'a> {
             normalizer.to_token_stream(),
         );
 
+        let static_doc_comment = format!(
+            "Transparently reinterprets a static string slice as a strongly-typed {} \
+            if it conforms to [`{}`], normalizing if necessary",
+            self.ident,
+            normalizer.to_token_stream(),
+        );
+
         let doc_comment_norm = format!(
             "Transparently reinterprets the string slice as a strongly-typed `{}` \
             if it conforms to [`{}`], producing an error if normalization is necessary",
@@ -234,7 +249,7 @@ impl<'a> RefCodeGen<'a> {
             "Transparently reinterprets the string slice as a strongly-typed `{}` \
             without validating\n\
             \n\
-            ## Safety\n\
+            # Safety\n\
             \n\
             Calls to this function must ensure that the value being passed conforms \
             to [`{}`] and is already in normalized form. Failure to do this may \
@@ -247,7 +262,7 @@ impl<'a> RefCodeGen<'a> {
             "Transparently reinterprets the [`Cow<str>`][std::borrow::Cow] as a \
             strongly-typed [`Cow`][std::borrow::Cow]`<{}>` without validating\n\
             \n\
-            ## Safety\n\
+            # Safety\n\
             \n\
             Calls to this function must ensure that the value being passed conforms \
             to [`{}`] and is already in normalized form. Failure to do this may \
@@ -333,9 +348,9 @@ impl<'a> RefCodeGen<'a> {
             }
 
             #[inline]
-            #[doc = #doc_comment]
+            #[doc = #static_doc_comment]
             #[doc = ""]
-            #[doc = "## Panics"]
+            #[doc = "# Panics"]
             #[doc = ""]
             #[doc = "This function will panic if the provided raw string is not normalized."]
             #[track_caller]
@@ -361,6 +376,7 @@ impl<'a> RefCodeGen<'a> {
             };
 
             quote! {
+                #[automatically_derived]
                 impl ::#alloc::borrow::ToOwned for #ty {
                     type Owned = #owned_ty;
 
@@ -370,6 +386,7 @@ impl<'a> RefCodeGen<'a> {
                     }
                 }
 
+                #[automatically_derived]
                 impl ::#core::cmp::PartialEq<#ty> for #owned_ty {
                     #[inline]
                     fn eq(&self, other: &#ty) -> bool {
@@ -377,6 +394,7 @@ impl<'a> RefCodeGen<'a> {
                     }
                 }
 
+                #[automatically_derived]
                 impl ::#core::cmp::PartialEq<#owned_ty> for #ty {
                     #[inline]
                     fn eq(&self, other: &#owned_ty) -> bool {
@@ -384,6 +402,7 @@ impl<'a> RefCodeGen<'a> {
                     }
                 }
 
+                #[automatically_derived]
                 impl ::#core::cmp::PartialEq<&'_ #ty> for #owned_ty {
                     #[inline]
                     fn eq(&self, other: &&#ty) -> bool {
@@ -391,6 +410,7 @@ impl<'a> RefCodeGen<'a> {
                     }
                 }
 
+                #[automatically_derived]
                 impl ::#core::cmp::PartialEq<#owned_ty> for &'_ #ty {
                     #[inline]
                     fn eq(&self, other: &#owned_ty) -> bool {
@@ -410,6 +430,7 @@ impl<'a> RefCodeGen<'a> {
 
         let from_str = match &self.check_mode {
             CheckMode::None => quote! {
+                #[automatically_derived]
                 impl<'a> ::#core::convert::From<&'a str> for &'a #ty {
                     #[inline]
                     fn from(s: &'a str) -> &'a #ty {
@@ -417,6 +438,7 @@ impl<'a> RefCodeGen<'a> {
                     }
                 }
 
+                #[automatically_derived]
                 impl ::#core::borrow::Borrow<str> for #ty {
                     #[inline]
                     fn borrow(&self) -> &str {
@@ -427,6 +449,7 @@ impl<'a> RefCodeGen<'a> {
             CheckMode::Validate(validator) => {
                 let validator = crate::as_validator(validator);
                 quote! {
+                    #[automatically_derived]
                     impl<'a> ::#core::convert::TryFrom<&'a str> for &'a #ty {
                         type Error = #validator::Error;
 
@@ -436,6 +459,7 @@ impl<'a> RefCodeGen<'a> {
                         }
                     }
 
+                    #[automatically_derived]
                     impl ::#core::borrow::Borrow<str> for #ty {
                         #[inline]
                         fn borrow(&self) -> &str {
@@ -447,6 +471,7 @@ impl<'a> RefCodeGen<'a> {
             CheckMode::Normalize(normalizer) => {
                 let validator = crate::as_validator(normalizer);
                 quote! {
+                    #[automatically_derived]
                     impl<'a> ::#core::convert::TryFrom<&'a str> for &'a #ty {
                         type Error = #validator::Error;
 
@@ -461,6 +486,7 @@ impl<'a> RefCodeGen<'a> {
 
         let alloc_from = self.owned_ty.is_some().then(|| {
             quote!{
+                #[automatically_derived]
                 impl<'a> ::#core::convert::From<&'a #ty> for ::#alloc::borrow::Cow<'a, #ty> {
                     #[inline]
                     fn from(r: &'a #ty) -> Self {
@@ -469,6 +495,7 @@ impl<'a> RefCodeGen<'a> {
                 }
 
 
+                #[automatically_derived]
                 impl<'a, 'b: 'a> ::#core::convert::From<&'a ::#alloc::borrow::Cow<'b, #ty>> for &'a #ty {
                     #[inline]
                     fn from(r: &'a ::#alloc::borrow::Cow<'b, #ty>) -> &'a #ty {
@@ -476,6 +503,7 @@ impl<'a> RefCodeGen<'a> {
                     }
                 }
 
+                #[automatically_derived]
                 impl ::#core::convert::From<&'_ #ty> for ::#alloc::rc::Rc<#ty> {
                     #[allow(unsafe_code)]
                     #[inline]
@@ -486,6 +514,7 @@ impl<'a> RefCodeGen<'a> {
                     }
                 }
 
+                #[automatically_derived]
                 impl ::#core::convert::From<&'_ #ty> for ::#alloc::sync::Arc<#ty> {
                     #[allow(unsafe_code)]
                     #[inline]
@@ -501,6 +530,7 @@ impl<'a> RefCodeGen<'a> {
         quote! {
             #from_str
 
+            #[automatically_derived]
             impl ::#core::convert::AsRef<str> for #ty {
                 #[inline]
                 fn as_ref(&self) -> &str {
