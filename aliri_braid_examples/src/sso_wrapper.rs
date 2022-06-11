@@ -1,5 +1,5 @@
-//! An example of constructing a basic strongly-typed wrapper around
-//! a string value.
+//! An example of constructing a strongly-typed wrapper around
+//! a string with small-string optimization.
 //!
 //! The types in this module do not perform any validation or normalization
 //! of their values, so every valid UTF-8 string is potentially valid for
