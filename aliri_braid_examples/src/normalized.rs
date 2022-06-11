@@ -64,7 +64,7 @@ impl aliri_braid::Validator for LowerString {
     fn validate(raw: &str) -> Result<(), Self::Error> {
         if raw.is_empty() {
             Err(InvalidString::EmptyString)
-        } else if raw.chars().any(|c| c.is_uppercase()) {
+        } else if raw.chars().any(char::is_uppercase) {
             Err(InvalidString::InvalidCharacter)
         } else {
             Ok(())
@@ -76,7 +76,7 @@ impl aliri_braid::Normalizer for LowerString {
     fn normalize(s: &str) -> Result<Cow<str>, Self::Error> {
         if s.is_empty() {
             Err(InvalidString::EmptyString)
-        } else if s.contains(|c: char| c.is_uppercase()) {
+        } else if s.contains(char::is_uppercase) {
             Ok(Cow::Owned(s.to_lowercase()))
         } else {
             Ok(Cow::Borrowed(s))

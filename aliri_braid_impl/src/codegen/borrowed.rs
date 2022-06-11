@@ -527,10 +527,10 @@ impl<'a> RefCodeGen<'a> {
             self.attrs.iter().map(|a| quote! {#[#a]}).collect();
         let common_attrs = {
             let mut attrs = proc_macro2::TokenStream::new();
-            if !self.doc.is_empty() {
-                attrs.append_all(self.common_attrs.iter().filter(|a| !is_doc_attribute(a)));
-            } else {
+            if self.doc.is_empty() {
                 attrs.append_all(self.common_attrs);
+            } else {
+                attrs.append_all(self.common_attrs.iter().filter(|a| !is_doc_attribute(a)));
             }
             attrs
         };

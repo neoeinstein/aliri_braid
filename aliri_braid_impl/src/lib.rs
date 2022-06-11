@@ -63,7 +63,7 @@ use syn::parse_macro_input;
 /// * `serde = "impl|omit"` (default `omit`)
 ///   * Adds serialize and deserialize implementations
 /// * `no_std`
-///   * Generates no_std-compatible braid (still requires `alloc`)
+///   * Generates `no_std`-compatible braid (still requires `alloc`)
 #[proc_macro_attribute]
 pub fn braid(args: TokenStream, input: TokenStream) -> TokenStream {
     let args = parse_macro_input!(args as syn::AttributeArgs);
@@ -93,7 +93,7 @@ pub fn braid(args: TokenStream, input: TokenStream) -> TokenStream {
 /// * `serde = "impl|omit"` (default `omit`)
 ///   * Adds serialize and deserialize implementations
 /// * `no_std`
-///   * Generates a no_std and no-alloc-compatible braid
+///   * Generates a `no_std`-compatible braid that doesn't require `alloc`
 #[proc_macro_attribute]
 pub fn braid_ref(args: TokenStream, input: TokenStream) -> TokenStream {
     let args = parse_macro_input!(args as syn::AttributeArgs);

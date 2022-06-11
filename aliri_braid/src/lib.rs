@@ -837,6 +837,10 @@ pub trait Validator {
     type Error;
 
     /// Validates a string according to a predetermined set of rules
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the string is invalid or not in normalized form.
     fn validate(raw: &str) -> Result<(), Self::Error>;
 }
 
@@ -845,6 +849,10 @@ pub trait Validator {
 #[cfg(feature = "alloc")]
 pub trait Normalizer: Validator {
     /// Validates and normalizes the borrowed input
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the string is invalid and cannot be normalized.
     fn normalize(raw: &str) -> Result<::alloc::borrow::Cow<str>, Self::Error>;
 }
 
