@@ -278,7 +278,7 @@ impl<'a> RefCodeGen<'a> {
                 #[allow(unsafe_code)]
                 #[inline]
                 #[doc = #doc_comment]
-                pub fn from_str(raw: &str) -> ::#core::result::Result<::#alloc::borrow::Cow<Self>, #normalizer::Error> {
+                pub fn from_str(raw: &str) -> ::#core::result::Result<::#alloc::borrow::Cow<Self>, #validator::Error> {
                     let cow = #normalizer::normalize(raw)?;
                     #unchecked_safety_comment
                     ::#core::result::Result::Ok(unsafe { Self::from_cow_str_unchecked(cow) })

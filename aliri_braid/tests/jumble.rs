@@ -80,7 +80,6 @@ impl aliri_braid::Validator for NormalizedBuf {
 }
 
 impl aliri_braid::Normalizer for NormalizedBuf {
-    type Error = InvalidData;
     fn normalize(s: &str) -> Result<Cow<str>, Self::Error> {
         if s.chars().any(|c| c.len_utf8() > 3) {
             Err(InvalidData)

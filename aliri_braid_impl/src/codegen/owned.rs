@@ -121,6 +121,7 @@ impl<'a> OwnedCodeGen<'a> {
         );
 
         let ty = self.ty;
+        let validator = crate::as_validator(normalizer);
         let normalizer = crate::as_normalizer(normalizer);
         let param = self.field.name.input_name();
         let create = self.field.self_constructor();
@@ -131,7 +132,7 @@ impl<'a> OwnedCodeGen<'a> {
         quote! {
             #[doc = #doc_comment]
             #[inline]
-            pub fn new(#param: #field_ty) -> ::#core::result::Result<Self, #normalizer::Error> {
+            pub fn new(#param: #field_ty) -> ::#core::result::Result<Self, #validator::Error> {
                 let #param = #normalizer::normalize(#param.as_ref())?.into_owned();
                 ::#core::result::Result::Ok(#create)
             }
@@ -426,13 +427,13 @@ impl<'a> OwnedCodeGen<'a> {
         let ref_ty = self.ref_ty;
         let field_ty = self.field.ty;
         let field_name = self.field.name;
-        let normalizer = crate::as_normalizer(normalizer);
+        let validator = crate::as_validator(normalizer);
         let core = self.std_lib.core();
         let unchecked_safety_comment = Self::unchecked_safety_comment(true);
 
         quote! {
             impl ::#core::convert::TryFrom<#field_ty> for #ty {
-                type Error = #normalizer::Error;
+                type Error = #validator::Error;
 
                 #[inline]
                 fn try_from(s: #field_ty) -> ::#core::result::Result<Self, Self::Error> {
@@ -441,7 +442,7 @@ impl<'a> OwnedCodeGen<'a> {
             }
 
             impl ::#core::convert::TryFrom<&'_ str> for #ty {
-                type Error = #normalizer::Error;
+                type Error = #validator::Error;
 
                 #[inline]
                 fn try_from(s: &str) -> ::#core::result::Result<Self, Self::Error> {
@@ -451,7 +452,7 @@ impl<'a> OwnedCodeGen<'a> {
             }
 
             impl ::#core::str::FromStr for #ty {
-                type Err = #normalizer::Error;
+                type Err = #validator::Error;
 
                 #[inline]
                 fn from_str(s: &str) -> ::#core::result::Result<Self, Self::Err> {

@@ -391,7 +391,7 @@
 //! impl aliri_braid::Validator for HeaderName {
 //!     type Error = InvalidHeaderName;
 //!     fn validate(s: &str) -> Result<(), Self::Error> {
-//!         if s.is_empty() || s.as_bytes().iter().any(|&b| b'A' <= b && b <= b'Z') {
+//!         if s.is_empty() || !s.is_ascii() || s.as_bytes().iter().any(|&b| b'A' <= b && b <= b'Z') {
 //!             Err(InvalidHeaderName)
 //!         } else {
 //!             Ok(())
@@ -400,9 +400,8 @@
 //! }
 //!
 //! impl aliri_braid::Normalizer for HeaderName {
-//!     type Error = InvalidHeaderName;
 //!     fn normalize(s: &str) -> Result<Cow<str>, Self::Error> {
-//!         if !s.is_ascii() || s.is_empty() {
+//!         if s.is_empty() || !s.is_ascii() {
 //!             Err(InvalidHeaderName)
 //!         } else if s.as_bytes().iter().any(|&b| b'A' <= b && b <= b'Z') {
 //!             Ok(Cow::Owned(s.to_ascii_lowercase()))
@@ -841,10 +840,7 @@ pub trait Validator {
 /// A normalizer that can verify a given input is valid
 /// and performs necessary normalization
 #[cfg(feature = "alloc")]
-pub trait Normalizer {
-    /// The error produced when the string is invalid
-    type Error;
-
+pub trait Normalizer: Validator {
     /// Validates and normalizes the borrowed input
     fn normalize(raw: &str) -> Result<::alloc::borrow::Cow<str>, Self::Error>;
 }

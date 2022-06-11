@@ -16,17 +16,24 @@ use aliri_braid::braid;
 use std::borrow::Cow;
 use std::{error, fmt};
 
-/// An error indicating that the provided value was an empty string
+/// An error indicating that the provided value was invalid
 #[derive(Debug)]
-pub struct EmptyString;
+pub enum InvalidString {
+    EmptyString,
+    InvalidCharacter,
+}
 
-impl fmt::Display for EmptyString {
+impl fmt::Display for InvalidString {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str("string cannot be empty")
+        match self {
+            Self::EmptyString => f.write_str("string cannot be empty"),
+            Self::InvalidCharacter =>
+                f.write_str("string contains invalid uppercase character"),
+        }
     }
 }
 
-impl error::Error for EmptyString {}
+impl error::Error for InvalidString {}
 
 /// A non-empty [`String`] normalized to lowercase
 ///
@@ -52,12 +59,15 @@ impl error::Error for EmptyString {}
 )]
 pub struct LowerString;
 
-impl aliri_braid::Validator for LowerString {
-    type Error = EmptyString;
 
-    fn validate(s: &str) -> Result<(), Self::Error> {
-        if s.is_empty() {
-            Err(EmptyString)
+impl aliri_braid::Validator for LowerString {
+    type Error = InvalidString;
+
+    fn validate(raw: &str) -> Result<(), Self::Error> {
+        if raw.is_empty() {
+            Err(InvalidString::EmptyString)
+        } else if raw.chars().any(|c| c.is_uppercase()) {
+            Err(InvalidString::InvalidCharacter)
         } else {
             Ok(())
         }
@@ -65,11 +75,9 @@ impl aliri_braid::Validator for LowerString {
 }
 
 impl aliri_braid::Normalizer for LowerString {
-    type Error = EmptyString;
-
     fn normalize(s: &str) -> Result<Cow<str>, Self::Error> {
         if s.is_empty() {
-            Err(EmptyString)
+            Err(InvalidString::EmptyString)
         } else if s.contains(|c: char| c.is_uppercase()) {
             Ok(Cow::Owned(s.to_lowercase()))
         } else {
