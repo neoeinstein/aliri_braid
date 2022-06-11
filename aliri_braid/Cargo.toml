@@ -3,7 +3,7 @@ name = "aliri_braid"
 description = "Improve and strengthen your strings by making them strongly-typed with less boilerplate"
 keywords = [ "string", "newtype", "validation", "normalization" ]
 categories = [ "data-structures", "rust-patterns" ]
-version = "0.2.0"
+version = "0.2.1"
 authors = ["Marcus Griep <marcus@griep.us>"]
 edition = "2018"
 readme = "../README.md"
@@ -17,7 +17,7 @@ default = ["alloc"]
 alloc = []
 
 [dependencies]
-aliri_braid_impl = { version = "=0.2.0", path = "../aliri_braid_impl" }
+aliri_braid_impl = { version = "=0.2.1", path = "../aliri_braid_impl" }
 
 [dev-dependencies]
 bytes = "1"
