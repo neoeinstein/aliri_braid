@@ -10,9 +10,31 @@ impl fmt::Display for EmptyString {
     }
 }
 
+#[derive(Debug)]
+pub struct NotNormalized;
+
+impl fmt::Display for NotNormalized {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str("string contains upper case characters or is empty")
+    }
+}
+
 pub struct LowerString;
 
 impl error::Error for EmptyString {}
+impl error::Error for NotNormalized {}
+
+impl aliri_braid::Validator for LowerString {
+    type Error = NotNormalized;
+
+    fn validate(raw: &str) -> Result<(), Self::Error> {
+        if raw.is_empty() || raw.chars().any(|c| c.is_uppercase()) {
+            Err(NotNormalized)
+        } else {
+            Ok(())
+        }
+    }
+}
 
 impl aliri_braid::Normalizer for LowerString {
     type Error = EmptyString;

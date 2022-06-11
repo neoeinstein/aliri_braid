@@ -67,6 +67,18 @@ impl aliri_braid::Validator for ValidatedBuf {
 )]
 pub struct NormalizedBuf;
 
+impl aliri_braid::Validator for NormalizedBuf {
+    type Error = InvalidData;
+
+    fn validate(raw: &str) -> Result<(), Self::Error> {
+        if raw.chars().any(|c| c.len_utf8() > 3 || c == ' ') {
+            Err(InvalidData)
+        } else {
+            Ok(())
+        }
+    }
+}
+
 impl aliri_braid::Normalizer for NormalizedBuf {
     type Error = InvalidData;
     fn normalize(s: &str) -> Result<Cow<str>, Self::Error> {

@@ -7,7 +7,7 @@
 //! Examples of the documentation and implementations provided for braids are available
 //! below and in the [`aliri_braid_examples`] crate documentation.
 //!
-//!   [`aliri_braid_examples`]: https://docs.rs/aliri_braid_examples/*/aliri_braid_examples
+//!   [`aliri_braid_examples`]: https://docs.rs/aliri_braid_examples/
 //!
 //! # Usage
 //!
@@ -22,7 +22,21 @@
 //! pub struct DatabaseName;
 //! ```
 //!
-//! Once created, braids can be passed around as strongly-typed strings.
+//! Braids of custom string types are also supported, so long as they implement a set of
+//! expected traits. If not specified, the type named `String` in the current namespace
+//! will be used. See the section on [custom string types] for more information.
+//!
+//! [custom string types]: #custom-string-types
+//!
+//! ```
+//! use aliri_braid::braid;
+//! use smartstring::alias::String;
+//!
+//! #[braid]
+//! pub struct UserId;
+//! ```
+//!
+//! Once created, braids can be passed around as strongly-typed, immutable strings.
 //!
 //! ```
 //!# use aliri_braid::braid;
@@ -51,7 +65,7 @@
 //!#
 //! let owned = DatabaseName::new(String::from("mongo"));
 //! borrow_raw_str(owned.as_str());
-//! take_raw_string(owned.into_string());
+//! take_raw_string(owned.take());
 //! ```
 //!
 //! By default, the name of the borrowed form will be the same as the owned form
@@ -112,6 +126,22 @@
 //!# let owned = DatabaseName::from_static("mongo");
 //!# let borrowed = DatabaseNameRef::from_static("mongo");
 //!# assert_eq!(owned, borrowed);
+//! ```
+//!
+//! Attributes added to the braid will be applied to both the owned and borrowed forms
+//! with the exception of `///` and `#[doc = ""]` attributes. To add an attribute to
+//! only the owned form, use the `owned_attr` parameter. Similarly, use `ref_attr` to
+//! add an attribute to only the borrowed form.
+//!
+//! ```
+//! use aliri_braid::braid;
+//!
+//! #[braid(
+//!    owned_attr(must_use = "database name should always be used"),
+//!    ref_attr(must_use = "created a reference, but never used it"),
+//! )]
+//! #[cfg(not(feature = "nightly"))]
+//! pub struct DatabaseName;
 //! ```
 //!
 //! # Extensibility
@@ -330,6 +360,10 @@
 //! value is expected to already be normalized, the `.from_normalized_str()` function can
 //! be used. This function will return an error if the value required normalization.
 //!
+//! Note that when implementing [`Validator`] for a braided type, the `validate` method
+//! must ensure that the value is already in normalized form and return an error if it is
+//! not.
+//!
 //! When using `serde` to deserialze directly to the borrowed form, care must be taken, as
 //! only already normalized values will be able to be deserialized. If normalization is
 //! expected, deserialize into the owned form or `Cow<Borrowed>`.
@@ -353,6 +387,17 @@
 //!
 //! #[braid(normalizer)]
 //! pub struct HeaderName;
+//!
+//! impl aliri_braid::Validator for HeaderName {
+//!     type Error = InvalidHeaderName;
+//!     fn validate(s: &str) -> Result<(), Self::Error> {
+//!         if s.is_empty() || s.as_bytes().iter().any(|&b| b'A' <= b && b <= b'Z') {
+//!             Err(InvalidHeaderName)
+//!         } else {
+//!             Ok(())
+//!         }
+//!     }
+//! }
 //!
 //! impl aliri_braid::Normalizer for HeaderName {
 //!     type Error = InvalidHeaderName;
@@ -552,12 +597,13 @@
 //! assert_not_impl_any!(Sensitive: Clone);
 //! ```
 //!
-//! ## Custom `Display` and `Debug`
+//! ## Custom `Display`, `Debug`, and `PartialOrd`/`Ord` implementations
 //!
-//! By default, the implementations of [`Display`][std::fmt::Display] and [`Debug`][std::fmt::Debug]
+//! By default, the implementations of [`Display`][std::fmt::Display], [`Debug`][std::fmt::Debug]
+//! [`PartialOrd`][std::cmp::PartialOrd], and [`Ord`][std::cmp::Ord]
 //! provided by a braid delegate directly to the underlying [`String`] or [`str`] types. If a
 //! custom implementation is desired, the automatic derivation of these traits can be controlled
-//! by the `display` and `debug` parameters. Both of these parameters accept one of
+//! by the `display`, `debug`, and `ord` parameters. Both of these parameters accept one of
 //! `impl`, `owned`, or `omit`. By default, the `impl` derivation mode is used.
 //!
 //! The modes have the following effects:
@@ -568,6 +614,9 @@
 //!   the borrowed form.
 //! * `omit`: No implementations are provided for the owned or borrowed forms. These must be
 //!   implemented by the consumer if they are desired.
+//!
+//! Note: Omitting a `PartialOrd` and `Ord` implementation will make the braid unable to be
+//! used as a key in a `BTreeMap` or `BTreeSet`.
 //!
 //! As an example:
 //!
@@ -662,6 +711,90 @@
 //! assert!(serde_json::from_str::<&UsernameRef>("\"nobody\"").is_ok());
 //! ```
 //!
+//! # Custom string types
+//!
+//! The `braid` macro can be used to define a custom string type that wraps types
+//! other than the standard [`String`]. This allows defining a braid that is backed
+//! by a type that offers small-string optimizations, such as [`SmartString`].
+//!
+//! [`SmartString`]: https://docs.rs/smartstring/*/smartstring/struct.SmartString.html
+//!
+//! ```
+//! # use aliri_braid::braid;
+//! use smartstring::{SmartString, LazyCompact};
+//!
+//! #[braid]
+//! pub struct UserId(SmartString<LazyCompact>);
+//! ```
+//!
+//! It can also be used to wrap a [`ByteString`], which is a string backed by
+//! [`Bytes`], which may be useful if the type is primarily used in contexts
+//! where a zero-copy implementation is preferred.
+//!
+//! [`ByteString`]: https://docs.rs/bytestring/*/bytestring/struct.ByteString.html
+//! [`Bytes`]: https://docs.rs/bytes/*/bytes/struct.Bytes.html
+//!
+//! ```
+//! # use aliri_braid::braid;
+//! use bytestring::ByteString;
+//!
+//! #[braid]
+//! pub struct ZeroCopyIdentifier(ByteString);
+//! ```
+//!
+//! ## Requirements
+//!
+//! In order to be used as a custom string type, the type must implement the
+//! following traits:
+//!
+//! * [`std::clone::Clone`] (unless `clone` is `omit`)
+//! * [`std::fmt::Debug`] (unless `debug` is `omit`)
+//! * [`std::fmt::Display`] (unless `display` is `omit`)
+//! * [`std::cmp::Eq`]
+//! * [`std::cmp::PartialEq`]
+//! * [`std::hash::Hash`]
+//! * [`std::cmp::Ord`] (unless `ord` is `omit`)
+//! * [`std::cmp::PartialOrd`] (unless `ord` is `omit`)
+//! * [`serde::Serialize`] (unless `serde` is `omit`)
+//! * [`serde::Deserialize`] (unless `serde` is `omit`)
+//! * [`std::convert::From<&str>`]
+//! * [`std::convert::From<Box<str>>`]
+//! * [`std::convert::AsRef<str>`]
+//! * [`std::convert::Into<String>`]
+//!
+//! [`serde::Serialize`]: https://docs.rs/serde/*/serde/trait.Serialize.html
+//! [`serde::Deserialize`]: https://docs.rs/serde/*/serde/trait.Deserialize.html
+//!
+//! # `no_std` support
+//!
+//! Braids can be implemented in `no_std` environments with `alloc`. By adding the
+//! `no_std` parameter to the macro, all impls will reference the `core` or `alloc`
+//! crates instead of the `std` crate, as appropriate.
+//!
+//! ```
+//! extern crate alloc;
+//!
+//! use aliri_braid::braid;
+//! use alloc::string::String;
+//!
+//! #[braid(no_std)]
+//! pub struct NoStdLibWrapper;
+//! #
+//! # fn main() {}
+//! ```
+//!
+//! In environments without an allocator, `braid_ref` can be used to create a
+//! reference-only braid.
+//!
+//! ```
+//! use aliri_braid::braid_ref;
+//!
+//! #[braid_ref(no_std)]
+//! pub struct NoStdValue;
+//! #
+//! # fn main() {}
+//! ```
+//!
 //! # Safety
 //!
 //! Braid uses limited `unsafe` in order to be able to reinterpret string slices
@@ -676,7 +809,6 @@
 //! If strict adherence to forbid unsafe code is required, then the types can be
 //! segregated into an accessory crate without the prohibition, and then consumed
 //! safely from crates that otherwise forbid unsafe code.
-//!
 
 #![warn(
     missing_docs,
@@ -691,8 +823,10 @@
     unused_must_use
 )]
 #![deny(unsafe_code)]
+#![no_std]
 
-use std::{borrow::Cow, error, fmt};
+#[cfg(feature = "alloc")]
+extern crate alloc;
 
 /// A validator that can verify a given input is valid given certain preconditions
 pub trait Validator {
@@ -705,67 +839,13 @@ pub trait Validator {
 
 /// A normalizer that can verify a given input is valid
 /// and performs necessary normalization
+#[cfg(feature = "alloc")]
 pub trait Normalizer {
     /// The error produced when the string is invalid
     type Error;
 
     /// Validates and normalizes the borrowed input
-    fn normalize(raw: &str) -> Result<Cow<str>, Self::Error>;
-}
-
-/// An error when validating a normalizable value, disallowing normalization
-#[derive(Debug, PartialEq, Eq)]
-pub enum NormalizationError<E> {
-    /// The value was normalizable, but is not normalized
-    ValueNotNormal,
-    /// The value was not valid and could not be normalized
-    ValidatorError(E),
-}
-
-impl<E> fmt::Display for NormalizationError<E>
-where
-    E: fmt::Display,
-{
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            Self::ValueNotNormal => f.write_str("value is not normalized"),
-            Self::ValidatorError(err) => fmt::Display::fmt(err, f),
-        }
-    }
-}
-
-impl<E> error::Error for NormalizationError<E>
-where
-    E: error::Error + 'static,
-{
-    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
-        match self {
-            Self::ValueNotNormal => None,
-            Self::ValidatorError(err) => err.source(),
-        }
-    }
-}
-
-impl<E> From<E> for NormalizationError<E> {
-    fn from(e: E) -> Self {
-        Self::ValidatorError(e)
-    }
-}
-
-impl<T> Validator for T
-where
-    T: Normalizer,
-{
-    type Error = NormalizationError<T::Error>;
-
-    /// Validates the provided value, but additionally returns an error if the
-    /// value is not already in normalized form
-    fn validate(raw: &str) -> Result<(), Self::Error> {
-        match Self::normalize(raw)? {
-            Cow::Borrowed(_) => Ok(()),
-            Cow::Owned(_) => Err(NormalizationError::ValueNotNormal),
-        }
-    }
+    fn normalize(raw: &str) -> Result<::alloc::borrow::Cow<str>, Self::Error>;
 }
 
 pub use aliri_braid_impl::braid;

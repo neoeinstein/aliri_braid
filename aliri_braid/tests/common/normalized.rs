@@ -17,7 +17,7 @@ pub fn equality_tests() -> Result<(), Box<dyn std::error::Error>> {
     assert_eq!(y, &x);
     assert_eq!(*y, x);
 
-    assert_eq!("OneTwo", x.clone().into_string());
+    assert_eq!("OneTwo", x.clone().take());
     let z = x.clone().into_boxed_ref();
     assert_eq!(y, &*z);
     assert_eq!(&*z, y);
@@ -408,4 +408,4 @@ fn check_owned_size_val() {
     assert_eq_size_val!(s, y);
 }
 
-assert_core_impls!(NormalizedBuf => Normalized where NormalizationError = crate::InvalidData);
+assert_core_impls!(NormalizedBuf => Normalized where NormalizationError = crate::InvalidData, ValidationError = crate::InvalidData);

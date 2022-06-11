@@ -52,6 +52,18 @@ impl error::Error for EmptyString {}
 )]
 pub struct LowerString;
 
+impl aliri_braid::Validator for LowerString {
+    type Error = EmptyString;
+
+    fn validate(s: &str) -> Result<(), Self::Error> {
+        if s.is_empty() {
+            Err(EmptyString)
+        } else {
+            Ok(())
+        }
+    }
+}
+
 impl aliri_braid::Normalizer for LowerString {
     type Error = EmptyString;
 

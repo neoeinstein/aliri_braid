@@ -29,8 +29,8 @@ macro_rules! assert_core_impls {
 
         assert_core_impls!($owned => $borrowed where ValidationError = std::convert::Infallible);
     };
-    ($owned:ty => $borrowed:ty where NormalizationError = $error:ty) => {
-        assert_core_impls!($owned => $borrowed where Error = ($error, aliri_braid::NormalizationError<$error>));
+    ($owned:ty => $borrowed:ty where NormalizationError = $error:ty, ValidationError = $verror:ty) => {
+        assert_core_impls!($owned => $borrowed where Error = ($error, $verror));
     };
     ($owned:ty => $borrowed:ty where ValidationError = $error:ty) => {
         assert_impl_all_with_lifetime!(
