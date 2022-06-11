@@ -14,6 +14,7 @@ repository = "https://github.com/neoeinstein/aliri_braid"
 
 [dependencies]
 aliri_braid = { version = "=0.1.10", path = "../aliri_braid" }
+bytes = "1"
 bytestring = { version = "1.1", features = [ "serde" ] }
 serde = { version = "1", features = [ "derive" ] }
 smartstring = { version = "1", features = [ "serde" ] }
