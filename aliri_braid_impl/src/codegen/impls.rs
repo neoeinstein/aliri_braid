@@ -299,7 +299,7 @@ impl ToImpl for ImplSerde {
                     }
                 }
 
-                #[allow(clippy::needless_question_mark)]
+                #[allow(clippy::needless_question_mark, clippy::unsafe_derive_deserialize)]
                 #[automatically_derived]
                 impl<'de> ::serde::Deserialize<'de> for #name {
                     fn deserialize<D: ::serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
@@ -352,7 +352,7 @@ impl ToImpl for ImplSerde {
                     // }
                     //
                     #[doc = #deserialize_doc]
-                    #[allow(clippy::needless_question_mark)]
+                    #[allow(clippy::needless_question_mark, clippy::unsafe_derive_deserialize)]
                     #[automatically_derived]
                     impl<'de: 'a, 'a> ::serde::Deserialize<'de> for &'a #ty {
                         fn deserialize<D: ::serde::Deserializer<'de>>(deserializer: D) -> ::#core::result::Result<Self, D::Error> {
@@ -363,7 +363,7 @@ impl ToImpl for ImplSerde {
                 }
             } else {
                 quote! {
-                    #[allow(clippy::needless_question_mark)]
+                    #[allow(clippy::needless_question_mark, clippy::unsafe_derive_deserialize)]
                     #[automatically_derived]
                     impl<'de: 'a, 'a> ::serde::Deserialize<'de> for &'a #ty {
                         fn deserialize<D: ::serde::Deserializer<'de>>(deserializer: D) -> ::#core::result::Result<Self, D::Error> {
