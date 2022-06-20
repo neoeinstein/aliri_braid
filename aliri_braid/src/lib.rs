@@ -279,6 +279,7 @@
 //!#         f.write_str("invalid username")
 //!#     }
 //!# }
+//!# aliri_braid::from_infallible!(InvalidUsername);
 //!# impl std::error::Error for InvalidUsername {}
 //!
 //! #[braid(validator)]
@@ -322,6 +323,7 @@
 //!#         f.write_str("invalid username")
 //!#     }
 //!# }
+//!# aliri_braid::from_infallible!(InvalidUsername);
 //!# impl std::error::Error for InvalidUsername {}
 //!#
 //! #[braid(validator = "UsernameValidator")]
@@ -352,6 +354,26 @@
 //! assert!(NonRootUsernameRef::from_str("nobody").is_ok());
 //!
 //! NonRootUsernameRef::from_static("nobody");
+//! ```
+//!
+//! Note: `Validator::Error` is expected to implement `From<Infallible>`. This can be
+//! trivially implemented using the [`from_infallible!()`] helper macro:
+//!
+//! ```
+//! pub struct InvalidUsername;
+//!
+//! aliri_braid::from_infallible!(InvalidUsername);
+//! ```
+//!
+//! This expands to the following code:
+//!
+//! ```
+//! struct InvalidUsername;
+//! impl From<core::convert::Infallible> for InvalidUsername {
+//!     fn from(x: core::convert::Infallible) -> Self {
+//!         match x {}
+//!     }
+//! }
 //! ```
 //!
 //! ## Normalization
@@ -386,6 +408,7 @@
 //!#         f.write_str("invalid header name")
 //!#     }
 //!# }
+//!# aliri_braid::from_infallible!(InvalidHeaderName);
 //!# impl std::error::Error for InvalidHeaderName {}
 //!
 //! #[braid(normalizer)]
@@ -452,6 +475,7 @@
 //!#         f.write_str("invalid username")
 //!#     }
 //!# }
+//!# aliri_braid::from_infallible!(InvalidUsername);
 //!# impl std::error::Error for InvalidUsername {}
 //!#
 //!# #[braid(validator)]
@@ -485,6 +509,7 @@
 //!#         f.write_str("invalid username")
 //!#     }
 //!# }
+//!# aliri_braid::from_infallible!(InvalidUsername);
 //!# impl std::error::Error for InvalidUsername {}
 //!#
 //!# #[braid(validator)]
@@ -689,6 +714,7 @@
 //!#         f.write_str("invalid username")
 //!#     }
 //!# }
+//!# aliri_braid::from_infallible!(InvalidUsername);
 //!# impl std::error::Error for InvalidUsername {}
 //!
 //! #[braid(serde, validator)]
@@ -718,16 +744,25 @@
 //!
 //! The `braid` macro can be used to define a custom string type that wraps types
 //! other than the standard `String`. This allows defining a braid that is backed
-//! by a type that offers small-string optimizations, such as [`SmartString`].
+//! by a type that offers small-string optimizations, such as [`SmartString`] or
+//! [`CompactString`].
+//!
+//! Functions that expose the inner wrapped type can be made private by adding the
+//! `no_expose` parameter to avoid leaking the type in the public interface.
 //!
 //! [`SmartString`]: https://docs.rs/smartstring/*/smartstring/struct.SmartString.html
+//! [`CompactString`]: https://docs.rs/compact_str/*/compact_str/struct.CompactString.html
 //!
 //! ```
 //! # use aliri_braid::braid;
+//! use compact_str::CompactString;
 //! use smartstring::{SmartString, LazyCompact};
 //!
-//! #[braid]
-//! pub struct UserId(SmartString<LazyCompact>);
+//! #[braid(no_expose)]
+//! pub struct UserId(CompactString);
+//!
+//! #[braid(no_expose)]
+//! pub struct AltUserId(SmartString<LazyCompact>);
 //! ```
 //!
 //! It can also be used to wrap a [`ByteString`], which is a string backed by
@@ -838,7 +873,10 @@ extern crate alloc;
 /// the value is _already in normalized form_.
 pub trait Validator {
     /// The error produced when the string is invalid
-    type Error;
+    ///
+    /// To easily implement `From<Infallible>` see the [`from_infallible!()`] helper
+    /// macro.
+    type Error: From<core::convert::Infallible>;
 
     /// Validates a string according to a predetermined set of rules
     ///
@@ -858,6 +896,32 @@ pub trait Normalizer: Validator {
     ///
     /// Returns an error if the string is invalid and cannot be normalized.
     fn normalize(raw: &str) -> Result<::alloc::borrow::Cow<str>, Self::Error>;
+}
+
+/// Utility macro for easily defining `From<Infallible>` for a given type.
+///
+/// # Example
+///
+/// ```
+/// use core::convert::Infallible;
+/// use aliri_braid::from_infallible;
+///
+/// pub struct MyType;
+///
+/// from_infallible!(MyType);
+///
+/// let result: Result<(), Infallible> = Ok(());
+/// let my_result: Result<(), MyType> = result.map_err(MyType::from);
+/// ```
+#[macro_export]
+macro_rules! from_infallible {
+    ($ty:ty) => {
+        impl ::core::convert::From<::core::convert::Infallible> for $ty {
+            fn from(x: ::core::convert::Infallible) -> Self {
+                match x {}
+            }
+        }
+    };
 }
 
 pub use aliri_braid_impl::braid;

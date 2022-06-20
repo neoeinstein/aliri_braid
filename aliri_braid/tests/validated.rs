@@ -1,5 +1,5 @@
 use aliri_braid::braid;
-use std::{error, fmt};
+use std::{convert::Infallible, error, fmt};
 
 #[derive(Debug)]
 pub enum InvalidScopeToken {
@@ -16,6 +16,13 @@ impl fmt::Display for InvalidScopeToken {
                 position, value
             )),
         }
+    }
+}
+
+impl From<Infallible> for InvalidScopeToken {
+    #[inline(always)]
+    fn from(x: Infallible) -> Self {
+        match x {}
     }
 }
 

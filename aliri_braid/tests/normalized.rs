@@ -1,5 +1,6 @@
 use aliri_braid::braid;
 use std::borrow::Cow;
+use std::convert::Infallible;
 use std::{error, fmt};
 
 #[derive(Debug)]
@@ -17,7 +18,15 @@ impl fmt::Display for InvalidString {
     }
 }
 
+impl From<Infallible> for InvalidString {
+    #[inline(always)]
+    fn from(x: Infallible) -> Self {
+        match x {}
+    }
+}
+
 impl error::Error for InvalidString {}
+
 /// A non-empty [`String`] normalized to lowercase
 #[braid(
     serde,

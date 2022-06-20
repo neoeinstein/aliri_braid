@@ -10,7 +10,7 @@
 //! a valid value for the type.
 
 use aliri_braid::braid;
-use std::{error, fmt};
+use std::{convert::Infallible, error, fmt};
 
 /// An error indicating that the provided string is not a valid scope token
 #[derive(Debug)]
@@ -30,6 +30,13 @@ impl fmt::Display for InvalidScopeToken {
                 position, value
             )),
         }
+    }
+}
+
+impl From<Infallible> for InvalidScopeToken {
+    #[inline(always)]
+    fn from(x: Infallible) -> Self {
+        match x {}
     }
 }
 

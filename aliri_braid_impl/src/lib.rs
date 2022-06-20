@@ -62,6 +62,8 @@ use syn::parse_macro_input;
 ///     If `omit`, then no implementations will be provided.
 /// * `serde = "impl|omit"` (default `omit`)
 ///   * Adds serialize and deserialize implementations
+/// * `no_expose`
+///   * Functions that expose the internal field type will not be exposed publicly.
 /// * `no_std`
 ///   * Generates `no_std`-compatible braid (still requires `alloc`)
 #[proc_macro_attribute]
