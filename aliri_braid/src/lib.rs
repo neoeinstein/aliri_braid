@@ -917,6 +917,9 @@ pub trait Normalizer: Validator {
 macro_rules! from_infallible {
     ($ty:ty) => {
         impl ::core::convert::From<::core::convert::Infallible> for $ty {
+            // This should always be trivially inlineable as it allows
+            // the compiler to eliminate code paths from this unreachable path.
+            #[inline(always)]
             fn from(x: ::core::convert::Infallible) -> Self {
                 match x {}
             }
