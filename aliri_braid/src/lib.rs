@@ -744,16 +744,22 @@
 //!
 //! The `braid` macro can be used to define a custom string type that wraps types
 //! other than the standard `String`. This allows defining a braid that is backed
-//! by a type that offers small-string optimizations, such as [`SmartString`].
+//! by a type that offers small-string optimizations, such as [`SmartString`] or
+//! [`CompactString`].
 //!
 //! Functions that expose the inner wrapped type can be made private by adding the
 //! `no_expose` parameter to avoid leaking the type in the public interface.
 //!
 //! [`SmartString`]: https://docs.rs/smartstring/*/smartstring/struct.SmartString.html
+//! [`CompactString`]: https://docs.rs/compact_str/*/compact_str/struct.CompactString.html
 //!
 //! ```
 //! # use aliri_braid::braid;
+//! use compact_str::CompactString;
 //! use smartstring::{SmartString, LazyCompact};
+//!
+//! #[braid(no_expose)]
+//! pub struct UserId(CompactString);
 //!
 //! #[braid(no_expose)]
 //! pub struct AltUserId(SmartString<LazyCompact>);
