@@ -2,7 +2,8 @@
 
 status = [
     "Test",
-    "Lint"
+    "Lint",
+    "Miri"
 ]
 
 delete_merged_branches = true
