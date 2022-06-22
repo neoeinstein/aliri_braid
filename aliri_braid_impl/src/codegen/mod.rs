@@ -56,6 +56,7 @@ pub struct Params<'a> {
     owned_attrs: AttrList<'a>,
     std_lib: StdLib,
     check_mode: IndefiniteCheckMode,
+    expose_inner: bool,
     impls: Impls,
 }
 
@@ -68,6 +69,7 @@ impl<'a> Default for Params<'a> {
             owned_attrs: AttrList::new(),
             std_lib: StdLib::default(),
             check_mode: IndefiniteCheckMode::None,
+            expose_inner: true,
             impls: Impls::default(),
         }
     }
@@ -155,6 +157,9 @@ impl<'a> Params<'a> {
                 syn::NestedMeta::Meta(syn::Meta::Path(p)) if p == symbol::NO_STD => {
                     params.std_lib = StdLib::no_std(p.span());
                 }
+                syn::NestedMeta::Meta(syn::Meta::Path(p)) if p == symbol::NO_EXPOSE => {
+                    params.expose_inner = false;
+                }
                 syn::NestedMeta::Meta(
                     syn::Meta::Path(ref path)
                     | syn::Meta::NameValue(syn::MetaNameValue { ref path, .. }),
@@ -184,6 +189,7 @@ impl<'a> Params<'a> {
             owned_attrs,
             std_lib,
             check_mode,
+            expose_inner,
             impls,
         } = self;
 
@@ -210,6 +216,7 @@ impl<'a> Params<'a> {
             ref_ty,
 
             std_lib,
+            expose_inner,
             impls,
         })
     }
@@ -352,6 +359,7 @@ pub struct CodeGen<'a> {
     ref_ty: syn::Type,
 
     std_lib: StdLib,
+    expose_inner: bool,
     impls: Impls,
 }
 
@@ -376,6 +384,7 @@ impl<'a> CodeGen<'a> {
             ty: &self.body.ident,
             ref_ty: &self.ref_ty,
             std_lib: &self.std_lib,
+            expose_inner: self.expose_inner,
             impls: &self.impls,
         }
     }

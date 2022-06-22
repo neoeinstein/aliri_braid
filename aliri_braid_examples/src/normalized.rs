@@ -14,6 +14,7 @@
 
 use aliri_braid::braid;
 use std::borrow::Cow;
+use std::convert::Infallible;
 use std::{error, fmt};
 
 /// An error indicating that the provided value was invalid
@@ -29,6 +30,13 @@ impl fmt::Display for InvalidString {
             Self::EmptyString => f.write_str("string cannot be empty"),
             Self::InvalidCharacter => f.write_str("string contains invalid uppercase character"),
         }
+    }
+}
+
+impl From<Infallible> for InvalidString {
+    #[inline(always)]
+    fn from(x: Infallible) -> Self {
+        match x {}
     }
 }
 

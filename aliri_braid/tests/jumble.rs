@@ -1,6 +1,6 @@
 #![deny(unsafe_code)]
 
-use std::{borrow::Cow, fmt};
+use std::{borrow::Cow, convert::Infallible, fmt};
 
 use aliri_braid::braid;
 
@@ -47,6 +47,14 @@ impl std::fmt::Display for InvalidData {
         f.write_str("found 4-byte UTF-8 codepoints")
     }
 }
+
+impl From<Infallible> for InvalidData {
+    #[inline(always)]
+    fn from(x: Infallible) -> Self {
+        match x {}
+    }
+}
+
 impl std::error::Error for InvalidData {}
 
 impl aliri_braid::Validator for ValidatedBuf {

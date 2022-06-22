@@ -15,6 +15,12 @@ pub struct MinimalUsernameBuf(MinimalString);
 )]
 pub struct MinimalString(String);
 
+impl From<String> for MinimalString {
+    fn from(s: String) -> Self {
+        MinimalString(s)
+    }
+}
+
 impl From<&'_ str> for MinimalString {
     fn from(s: &str) -> Self {
         MinimalString(s.into())

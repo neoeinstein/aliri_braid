@@ -10,6 +10,7 @@ pub struct OwnedCodeGen<'a> {
     pub check_mode: &'a CheckMode,
     pub ref_ty: &'a syn::Type,
     pub std_lib: &'a StdLib,
+    pub expose_inner: bool,
     pub impls: &'a Impls,
 }
 
@@ -29,15 +30,17 @@ impl<'a> OwnedCodeGen<'a> {
         let param = self.field.name.input_name();
         let create = self.field.self_constructor();
         let ref_ty = self.ref_ty;
-        let wrapped_type = self.field.ty;
+        let field_ty = self.field.ty;
         let alloc = self.std_lib.alloc();
+
+        let vis = self
+            .expose_inner
+            .then(|| proc_macro2::Ident::new("pub", proc_macro2::Span::call_site()));
 
         quote! {
             #[doc = #doc_comment]
             #[inline]
-            pub const fn new(#param: #wrapped_type) -> Self {
-                // const fn ensure_infallible<T: ::aliri_braid::OwnedValue<str, Error=::#core::convert::Infallible>>(_: &T) {}
-                // ensure_infallible(&#param);
+            #vis const fn new(#param: #field_ty) -> Self {
                 #create
             }
 
@@ -45,7 +48,7 @@ impl<'a> OwnedCodeGen<'a> {
             #[doc = #static_doc_comment]
             #[track_caller]
             pub fn from_static(raw: &'static str) -> Self {
-                ::#alloc::borrow::ToOwned::to_owned(#ref_ty::from_str(raw))
+                ::#alloc::borrow::ToOwned::to_owned(#ref_ty::from_static(raw))
             }
         }
     }
@@ -76,14 +79,18 @@ impl<'a> OwnedCodeGen<'a> {
         let param = self.field.name.input_name();
         let create = self.field.self_constructor();
         let ref_ty = self.ref_ty;
-        let wrapped_type = self.field.ty;
+        let field_ty = self.field.ty;
         let core = self.std_lib.core();
         let alloc = self.std_lib.alloc();
+
+        let vis = self
+            .expose_inner
+            .then(|| proc_macro2::Ident::new("pub", proc_macro2::Span::call_site()));
 
         quote! {
             #[doc = #doc_comment]
             #[inline]
-            pub fn new(#param: #wrapped_type) -> ::#core::result::Result<Self, #validator::Error> {
+            #vis fn new(#param: #field_ty) -> ::#core::result::Result<Self, #validator::Error> {
                 #validator::validate(#param.as_ref())?;
                 ::#core::result::Result::Ok(#create)
             }
@@ -91,7 +98,7 @@ impl<'a> OwnedCodeGen<'a> {
             #[doc = #doc_comment_unsafe]
             #[allow(unsafe_code)]
             #[inline]
-            pub const unsafe fn new_unchecked(#param: #wrapped_type) -> Self {
+            #vis const unsafe fn new_unchecked(#param: #field_ty) -> Self {
                 #create
             }
 
@@ -140,10 +147,14 @@ impl<'a> OwnedCodeGen<'a> {
         let field_ty = self.field.ty;
         let core = self.std_lib.core();
 
+        let vis = self
+            .expose_inner
+            .then(|| proc_macro2::Ident::new("pub", proc_macro2::Span::call_site()));
+
         quote! {
             #[doc = #doc_comment]
             #[inline]
-            pub fn new(#param: #field_ty) -> ::#core::result::Result<Self, #validator::Error> {
+            #vis fn new(#param: #field_ty) -> ::#core::result::Result<Self, #validator::Error> {
                 let #param = #normalizer::normalize(#param.as_ref())?.into_owned();
                 ::#core::result::Result::Ok(#create)
             }
@@ -151,7 +162,7 @@ impl<'a> OwnedCodeGen<'a> {
             #[doc = #doc_comment_unsafe]
             #[allow(unsafe_code)]
             #[inline]
-            pub const unsafe fn new_unchecked(#param: #field_ty) -> Self {
+            #vis const unsafe fn new_unchecked(#param: #field_ty) -> Self {
                 #create
             }
 
@@ -208,16 +219,20 @@ impl<'a> OwnedCodeGen<'a> {
 
     fn make_take(&self) -> proc_macro2::TokenStream {
         let field = self.field.name;
-        let wrapped_type = self.field.ty;
+        let field_ty = self.field.ty;
         let doc = format!(
             "Unwraps the underlying [`{}`] value",
-            wrapped_type.to_token_stream()
+            field_ty.to_token_stream()
         );
+
+        let vis = self
+            .expose_inner
+            .then(|| proc_macro2::Ident::new("pub", proc_macro2::Span::call_site()));
 
         quote! {
             #[doc = #doc]
             #[inline]
-            pub fn take(self) -> #wrapped_type {
+            #vis fn take(self) -> #field_ty {
                 self.#field
             }
         }
@@ -241,6 +256,7 @@ impl<'a> OwnedCodeGen<'a> {
 
     fn common_conversion(&self) -> proc_macro2::TokenStream {
         let ty = self.ty;
+        let field_name = self.field.name;
         let ref_ty = self.ref_ty;
         let core = self.std_lib.core();
         let alloc = self.std_lib.alloc();
@@ -251,6 +267,14 @@ impl<'a> OwnedCodeGen<'a> {
                 #[inline]
                 fn from(s: &#ref_ty) -> Self {
                     ::#alloc::borrow::ToOwned::to_owned(s)
+                }
+            }
+
+            #[automatically_derived]
+            impl ::#core::convert::From<#ty> for ::#alloc::string::String {
+                #[inline]
+                fn from(s: #ty) -> Self {
+                    ::#core::convert::From::from(s.#field_name)
                 }
             }
 
@@ -319,16 +343,16 @@ impl<'a> OwnedCodeGen<'a> {
     fn infallible_conversion(&self) -> proc_macro2::TokenStream {
         let ty = self.ty;
         let ref_ty = self.ref_ty;
-        let field_ty = self.field.ty;
         let field_name = self.field.name;
         let core = self.std_lib.core();
+        let alloc = self.std_lib.alloc();
 
         quote! {
             #[automatically_derived]
-            impl ::#core::convert::From<#field_ty> for #ty {
+            impl ::#core::convert::From<::#alloc::string::String> for #ty {
                 #[inline]
-                fn from(s: #field_ty) -> Self {
-                    Self::new(s)
+                fn from(s: ::#alloc::string::String) -> Self {
+                    Self::new(From::from(s))
                 }
             }
 
@@ -336,6 +360,14 @@ impl<'a> OwnedCodeGen<'a> {
             impl ::#core::convert::From<&'_ str> for #ty {
                 #[inline]
                 fn from(s: &str) -> Self {
+                    Self::new(::#core::convert::From::from(s))
+                }
+            }
+
+            #[automatically_derived]
+            impl ::#core::convert::From<::#alloc::boxed::Box<str>> for #ty {
+                #[inline]
+                fn from(s: ::#alloc::boxed::Box<str>) -> Self {
                     Self::new(::#core::convert::From::from(s))
                 }
             }
@@ -390,7 +422,6 @@ impl<'a> OwnedCodeGen<'a> {
     fn fallible_conversion(&self, validator: &syn::Type) -> proc_macro2::TokenStream {
         let ty = self.ty;
         let ref_ty = self.ref_ty;
-        let field_ty = self.field.ty;
         let field_name = self.field.name;
         let validator = crate::as_validator(validator);
         let core = self.std_lib.core();
@@ -399,12 +430,12 @@ impl<'a> OwnedCodeGen<'a> {
 
         quote! {
             #[automatically_derived]
-            impl ::#core::convert::TryFrom<#field_ty> for #ty {
+            impl ::#core::convert::TryFrom<::#alloc::string::String> for #ty {
                 type Error = #validator::Error;
 
                 #[inline]
-                fn try_from(s: #field_ty) -> ::#core::result::Result<Self, Self::Error> {
-                    Self::new(s)
+                fn try_from(s: ::#alloc::string::String) -> ::#core::result::Result<Self, Self::Error> {
+                    Self::new(::#core::convert::TryFrom::try_from(s)?)
                 }
             }
 
@@ -455,20 +486,20 @@ impl<'a> OwnedCodeGen<'a> {
     fn normalized_conversion(&self, normalizer: &syn::Type) -> proc_macro2::TokenStream {
         let ty = self.ty;
         let ref_ty = self.ref_ty;
-        let field_ty = self.field.ty;
         let field_name = self.field.name;
         let validator = crate::as_validator(normalizer);
         let core = self.std_lib.core();
+        let alloc = self.std_lib.alloc();
         let unchecked_safety_comment = Self::unchecked_safety_comment(true);
 
         quote! {
             #[automatically_derived]
-            impl ::#core::convert::TryFrom<#field_ty> for #ty {
+            impl ::#core::convert::TryFrom<::#alloc::string::String> for #ty {
                 type Error = #validator::Error;
 
                 #[inline]
-                fn try_from(s: #field_ty) -> ::#core::result::Result<Self, Self::Error> {
-                    Self::new(s)
+                fn try_from(s: ::#alloc::string::String) -> ::#core::result::Result<Self, Self::Error> {
+                    Self::new(::#core::convert::TryFrom::try_from(s)?)
                 }
             }
 

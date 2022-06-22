@@ -16,6 +16,7 @@ pub const REF_DOC: Symbol = Symbol("ref_doc");
 pub const REF_ATTR: Symbol = Symbol("ref_attr");
 pub const OWNED_ATTR: Symbol = Symbol("owned_attr");
 pub const NO_STD: Symbol = Symbol("no_std");
+pub const NO_EXPOSE: Symbol = Symbol("no_expose");
 pub const VALIDATOR: Symbol = Symbol(super::check_mode::VALIDATOR);
 pub const NORMALIZER: Symbol = Symbol(super::check_mode::NORMALIZER);
 
