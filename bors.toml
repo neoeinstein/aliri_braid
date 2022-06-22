@@ -1,0 +1,9 @@
+# https://bors.tech/documentation/
+
+status = [
+    "Test",
+    "Lint"
+]
+
+delete_merged_branches = true
+update_base_for_deletes = true
