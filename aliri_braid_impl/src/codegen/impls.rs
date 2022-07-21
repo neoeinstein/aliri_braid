@@ -144,7 +144,7 @@ impl ToImpl for ImplDisplay {
         self.0.map_owned(|| {
             quote! {
                 #[automatically_derived]
-                impl<'a> ::#core::fmt::Display for #ty {
+                impl ::#core::fmt::Display for #ty {
                     #[inline]
                     fn fmt(&self, f: &mut ::#core::fmt::Formatter) -> ::#core::fmt::Result {
                         <#ref_ty as ::#core::fmt::Display>::fmt(::#core::ops::Deref::deref(self), f)
@@ -195,7 +195,7 @@ impl ToImpl for ImplDebug {
         self.0.map_owned(|| {
             quote! {
                 #[automatically_derived]
-                impl<'a> ::#core::fmt::Debug for #ty {
+                impl ::#core::fmt::Debug for #ty {
                     #[inline]
                     fn fmt(&self, f: &mut ::#core::fmt::Formatter) -> ::#core::fmt::Result {
                         <#ref_ty as ::#core::fmt::Debug>::fmt(::#core::ops::Deref::deref(self), f)
