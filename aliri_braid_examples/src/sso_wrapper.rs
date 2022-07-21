@@ -18,3 +18,11 @@ use smartstring::alias::String;
 /// implicitly use the `String` type in the namespace where it is defined.
 #[braid(serde, ref_doc = "A borrowed reference to a string slice wrapper")]
 pub struct SmartUsernameBuf;
+
+/// An example of a wrapper with small-string optimization
+///
+/// This type wraps the around a [`compact_str::CompactString`], but that
+/// implementation detail won't be exposed through the type API due to
+/// the use of the `no_expose` braid parameter.
+#[braid(serde, no_expose)]
+pub struct CompactData(compact_str::CompactString);

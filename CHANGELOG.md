@@ -7,6 +7,7 @@ The format of this changelog is based on [Keep a Changelog](https://keepachangel
 ### Added
 
 - `from_infallible!()` utility macro added for providing universal `From<Infallible>` impls
+- Added an example using `CompactString` from the `compact_str` crate ([#15])
 
 ### Changed
 

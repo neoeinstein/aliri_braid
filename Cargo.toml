@@ -6,3 +6,6 @@ members = [
 
 # Generate README
 # cargo readme -r aliri_braid/ -o ../README.md --no-license
+
+[patch.crates-io]
+compact_str = { git = "https://github.com/ParkMyCar/compact_str", branch = "main" }
