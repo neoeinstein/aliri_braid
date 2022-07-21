@@ -15,6 +15,14 @@ The format of this changelog is based on [Keep a Changelog](https://keepachangel
 
 [#15]: https://github.com/neoeinstein/aliri_braid/pull/15
 
+## [0.2.4] - 2022-07-21
+
+### Fixed
+
+- Removed unnecessary lifetime annotations that cause clippy warnings in 1.62 ([#20])
+
+[#20]: https://github.com/neoeinstein/aliri_braid/pull/20
+
 ## [0.2.3] - 2022-06-15
 
 ### Changed
