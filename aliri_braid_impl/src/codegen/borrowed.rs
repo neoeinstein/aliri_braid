@@ -302,7 +302,7 @@ impl<'a> RefCodeGen<'a> {
                             ::#alloc::borrow::Cow::Borrowed(value)
                         }
                         ::#alloc::borrow::Cow::Owned(normalized) => {
-                            let value = #owned_ty::new_unchecked(normalized);
+                            let value = #owned_ty::new_unchecked(::#core::convert::From::from(normalized));
                             ::#alloc::borrow::Cow::Owned(value)
                         }
                     }

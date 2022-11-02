@@ -4,6 +4,11 @@ The format of this changelog is based on [Keep a Changelog](https://keepachangel
 
 ## [Unreleased]
 
+### Fixed
+
+- Normalized braids with custom inner types would cause compiler errors on trying to convert from
+  `Cow<str>`.
+
 ## [0.3.0] - 2022-11-02
 
 ### Added

@@ -150,7 +150,7 @@ impl<'a> OwnedCodeGen<'a> {
             #[doc = #doc_comment]
             #[inline]
             #vis fn new(#param: #field_ty) -> ::#core::result::Result<Self, #validator::Error> {
-                let #param = #normalizer::normalize(#param.as_ref())?.into_owned();
+                let #param = ::#core::convert::From::from(#normalizer::normalize(#param.as_ref())?);
                 ::#core::result::Result::Ok(#create)
             }
 
