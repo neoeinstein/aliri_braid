@@ -412,7 +412,7 @@ impl<'a> CodeGen<'a> {
 
 fn infer_ref_type_from_owned_name(name: &syn::Ident) -> syn::Type {
     let name_str = name.to_string();
-    if name_str.ends_with("Buf") {
+    if name_str.ends_with("Buf") || name_str.ends_with("String") {
         syn::Type::Path(syn::TypePath {
             qself: None,
             path: syn::Path::from(format_ident!("{}", name_str[..name_str.len() - 3])),

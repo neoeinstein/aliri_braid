@@ -100,6 +100,19 @@
 //! # assert_eq!(owned, borrowed);
 //! ```
 //!
+//! If the name ends with `String`, then the borrowed form will use `Str`.
+//!
+//! ```
+//! # use aliri_braid::braid;
+//! #
+//! #[braid]
+//! pub struct ConnectionString;
+//!
+//! let owned = ConnectionString::from_static("mysql://…");
+//! let borrowed = ConnectionStr::from_static("mysql://…");
+//! # assert_eq!(owned, borrowed);
+//! ```
+//!
 //! If a different name is desired, this behavior can be
 //! overridden by specifying the name of the reference type to create using the `ref`
 //! parameter.
