@@ -147,11 +147,11 @@ fn can_use_as_hash_keys() {
     assert!(!map.contains(&*Normalized::from_str("Two Three").unwrap()));
 
     assert!(!map.remove(&*Normalized::from_str("Two Three").unwrap()));
-    assert!(map.remove(&*Normalized::from_static("OneTwo")));
+    assert!(map.remove(Normalized::from_static("OneTwo")));
     assert!(!map.remove(&*Normalized::from_str("One Two").unwrap()));
 
     assert!(map.remove(&NormalizedBuf::from_static("Seven Eight")));
-    assert!(!map.remove(&*Normalized::from_static("SevenEight")));
+    assert!(!map.remove(Normalized::from_static("SevenEight")));
 
     assert!(map.is_empty());
 }
@@ -168,11 +168,11 @@ fn can_use_refs_as_hash_keys() {
     assert!(!map.contains(&*Normalized::from_str("Two Three").unwrap()));
 
     assert!(!map.remove(&*Normalized::from_str("Two Three").unwrap()));
-    assert!(map.remove(&*Normalized::from_static("OneTwo")));
+    assert!(map.remove(Normalized::from_static("OneTwo")));
     assert!(!map.remove(&*Normalized::from_str("One Two").unwrap()));
 
     assert!(map.remove(&*NormalizedBuf::from_static("Seven Eight")));
-    assert!(!map.remove(&*Normalized::from_static("SevenEight")));
+    assert!(!map.remove(Normalized::from_static("SevenEight")));
 
     assert!(map.is_empty());
 }
@@ -189,11 +189,11 @@ fn can_use_as_btree_keys() {
     assert!(!map.contains(&*Normalized::from_str("Two Three").unwrap()));
 
     assert!(!map.remove(&*Normalized::from_str("Two Three").unwrap()));
-    assert!(map.remove(&*Normalized::from_static("OneTwo")));
+    assert!(map.remove(Normalized::from_static("OneTwo")));
     assert!(!map.remove(&*Normalized::from_str("One Two").unwrap()));
 
     assert!(map.remove(&NormalizedBuf::from_static("Seven Eight")));
-    assert!(!map.remove(&*Normalized::from_static("SevenEight")));
+    assert!(!map.remove(Normalized::from_static("SevenEight")));
 
     assert!(map.is_empty());
 }
@@ -210,11 +210,11 @@ fn can_use_refs_as_btree_keys() {
     assert!(!map.contains(&*Normalized::from_str("Two Three").unwrap()));
 
     assert!(!map.remove(&*Normalized::from_str("Two Three").unwrap()));
-    assert!(map.remove(&*Normalized::from_static("OneTwo")));
+    assert!(map.remove(Normalized::from_static("OneTwo")));
     assert!(!map.remove(&*Normalized::from_str("One Two").unwrap()));
 
     assert!(map.remove(&*NormalizedBuf::from_static("Seven Eight")));
-    assert!(!map.remove(&*Normalized::from_static("SevenEight")));
+    assert!(!map.remove(Normalized::from_static("SevenEight")));
 
     assert!(map.is_empty());
 }

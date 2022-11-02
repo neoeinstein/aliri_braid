@@ -356,8 +356,17 @@
 //! NonRootUsernameRef::from_static("nobody");
 //! ```
 //!
-//! Note: `Validator::Error` is expected to implement `From<Infallible>`. This can be
-//! trivially implemented using the [`from_infallible!()`] helper macro:
+//! Note: `Validator::Error` is expected to implement `From<Infallible>`. If
+//! you haven't implemented this trait, you'll receive an error of the
+//! following form:
+//!
+//! ```text
+//! the trait bound `MyError: std::convert::From<std::convert::Infallible>` is not satisfied
+//! the trait `std::convert::From<std::convert::Infallible>` is not implemented for `MyError`
+//! ```
+//!
+//! In order to assist in implementing this trait trivially, use the [`from_infallible!()`]
+//! helper macro:
 //!
 //! ```
 //! pub struct InvalidUsername;
@@ -370,6 +379,7 @@
 //! ```
 //! struct InvalidUsername;
 //! impl From<core::convert::Infallible> for InvalidUsername {
+//!     #[inline(always)]
 //!     fn from(x: core::convert::Infallible) -> Self {
 //!         match x {}
 //!     }
@@ -868,9 +878,11 @@ extern crate alloc;
 pub trait Validator {
     /// The error produced when the string is invalid
     ///
-    /// To easily implement `From<Infallible>` see the [`from_infallible!()`] helper
-    /// macro.
-    type Error: From<core::convert::Infallible>;
+    /// `TryFrom<String>::Error` for the wrapped type must be convertable into this
+    /// error type. In most cases, this conversion is infallible, and so the error
+    /// type needs to implement `From<Infallible>`. See the [`from_infallible!()`]
+    /// helper macro to quickly implement this for your error type.
+    type Error;
 
     /// Validates a string according to a predetermined set of rules
     ///

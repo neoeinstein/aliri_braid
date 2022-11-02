@@ -423,6 +423,7 @@ impl<'a> OwnedCodeGen<'a> {
         let ty = self.ty;
         let ref_ty = self.ref_ty;
         let field_name = self.field.name;
+        let field_ty = self.field.ty;
         let validator = crate::as_validator(validator);
         let core = self.std_lib.core();
         let alloc = self.std_lib.alloc();
@@ -435,6 +436,9 @@ impl<'a> OwnedCodeGen<'a> {
 
                 #[inline]
                 fn try_from(s: ::#alloc::string::String) -> ::#core::result::Result<Self, Self::Error> {
+                    const fn ensure_try_from_string_error_converts_to_validator_error<T: ?Sized + From<<#field_ty as ::#core::convert::TryFrom<::#alloc::string::String>>::Error>>() {}
+                    ensure_try_from_string_error_converts_to_validator_error::<Self::Error>();
+
                     Self::new(::#core::convert::TryFrom::try_from(s)?)
                 }
             }
@@ -487,6 +491,7 @@ impl<'a> OwnedCodeGen<'a> {
         let ty = self.ty;
         let ref_ty = self.ref_ty;
         let field_name = self.field.name;
+        let field_ty = self.field.ty;
         let validator = crate::as_validator(normalizer);
         let core = self.std_lib.core();
         let alloc = self.std_lib.alloc();
@@ -499,6 +504,9 @@ impl<'a> OwnedCodeGen<'a> {
 
                 #[inline]
                 fn try_from(s: ::#alloc::string::String) -> ::#core::result::Result<Self, Self::Error> {
+                    const fn ensure_try_from_string_error_converts_to_validator_error<T: ?Sized + From<<#field_ty as ::#core::convert::TryFrom<::#alloc::string::String>>::Error>>() {}
+                    ensure_try_from_string_error_converts_to_validator_error::<Self::Error>();
+
                     Self::new(::#core::convert::TryFrom::try_from(s)?)
                 }
             }
