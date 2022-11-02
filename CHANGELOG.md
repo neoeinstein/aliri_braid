@@ -4,6 +4,8 @@ The format of this changelog is based on [Keep a Changelog](https://keepachangel
 
 ## [Unreleased]
 
+## [0.3.0] - 2022-11-02
+
 ### Added
 
 - `from_infallible!()` utility macro added for providing universal `From<Infallible>` impls
@@ -11,10 +13,12 @@ The format of this changelog is based on [Keep a Changelog](https://keepachangel
 
 ### Changed
 
+- `String` at the end of a braid name will now be shortened to `Str` in the borrowed form ([#19])
 - `Validator::Error` is now expected to implement `From<Infallible>` to allow potentially
   fallible wrapped type conversions
 
 [#15]: https://github.com/neoeinstein/aliri_braid/pull/15
+[#19]: https://github.com/neoeinstein/aliri_braid/pull/19
 
 ## [0.2.4] - 2022-07-21
 
