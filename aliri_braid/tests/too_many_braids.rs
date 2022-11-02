@@ -1,6 +1,4 @@
-use std::borrow::Cow;
-use std::convert::Infallible;
-use std::{error, fmt};
+use std::{borrow::Cow, convert::Infallible, error, fmt};
 #[derive(Debug)]
 pub enum InvalidString {
     EmptyString,

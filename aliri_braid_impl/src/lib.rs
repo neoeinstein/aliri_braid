@@ -41,25 +41,22 @@ use syn::parse_macro_input;
 /// * `owned_attr = "#[derive(...)]"`
 ///   * Provides an attribute to be placed only on the owned type
 /// * either `validator [ = "Type" ]` or `normalizer [ = "Type" ]`
-///   * Indicates the type is validated or normalized. If not specified,
-///     it is assumed that the braid implements the relevant trait itself.
+///   * Indicates the type is validated or normalized. If not specified, it is assumed that the
+///     braid implements the relevant trait itself.
 /// * `clone = "impl|omit"` (default: `impl`)
 ///   * Changes the automatic derivation of a `Clone` implementation on the owned type.
 /// * `debug = "impl|owned|omit"` (default `impl`)
-///   * Changes how automatic implementations of the `Debug` trait are provided.
-///     If `owned`, then the owned type will generate a `Debug` implementation that
-///     will just delegate to the borrowed implementation.
-///     If `omit`, then no implementations of `Debug` will be provided.
+///   * Changes how automatic implementations of the `Debug` trait are provided. If `owned`, then
+///     the owned type will generate a `Debug` implementation that will just delegate to the
+///     borrowed implementation. If `omit`, then no implementations of `Debug` will be provided.
 /// * `display = "impl|owned|omit"` (default `impl`)
-///   * Changes how automatic implementations of the `Display` trait are provided.
-///     If `owned`, then the owned type will generate a `Display` implementation that
-///     will just delegate to the borrowed implementation.
-///     If `omit`, then no implementations of `Display` will be provided.
+///   * Changes how automatic implementations of the `Display` trait are provided. If `owned`, then
+///     the owned type will generate a `Display` implementation that will just delegate to the
+///     borrowed implementation. If `omit`, then no implementations of `Display` will be provided.
 /// * `ord = "impl|owned|omit"` (default `impl`)
-///   * Changes how automatic implementations of the `PartialOrd` and `Ord` traits are provided.
-///     If `owned`, then the owned type will generate implementations that
-///     will just delegate to the borrowed implementations.
-///     If `omit`, then no implementations will be provided.
+///   * Changes how automatic implementations of the `PartialOrd` and `Ord` traits are provided. If
+///     `owned`, then the owned type will generate implementations that will just delegate to the
+///     borrowed implementations. If `omit`, then no implementations will be provided.
 /// * `serde = "impl|omit"` (default `omit`)
 ///   * Adds serialize and deserialize implementations
 /// * `no_expose`
@@ -81,17 +78,17 @@ pub fn braid(args: TokenStream, input: TokenStream) -> TokenStream {
 ///
 /// Available options:
 /// * either `validator [ = "Type" ]`
-///   * Indicates the type is validated. If not specified,
-///     it is assumed that the braid implements the relevant trait itself.
+///   * Indicates the type is validated. If not specified, it is assumed that the braid implements
+///     the relevant trait itself.
 /// * `debug = "impl|omit"` (default `impl`)
-///   * Changes how automatic implementations of the `Debug` trait are provided.
-///     If `omit`, then no implementations of `Debug` will be provided.
+///   * Changes how automatic implementations of the `Debug` trait are provided. If `omit`, then no
+///     implementations of `Debug` will be provided.
 /// * `display = "impl|omit"` (default `impl`)
-///   * Changes how automatic implementations of the `Display` trait are provided.
-///     If `omit`, then no implementations of `Display` will be provided.
+///   * Changes how automatic implementations of the `Display` trait are provided. If `omit`, then
+///     no implementations of `Display` will be provided.
 /// * `ord = "impl|omit"` (default `impl`)
-///   * Changes how automatic implementations of the `PartialOrd` and `Ord` traits are provided.
-///     If `omit`, then no implementations will be provided.
+///   * Changes how automatic implementations of the `PartialOrd` and `Ord` traits are provided. If
+///     `omit`, then no implementations will be provided.
 /// * `serde = "impl|omit"` (default `omit`)
 ///   * Adds serialize and deserialize implementations
 /// * `no_std`

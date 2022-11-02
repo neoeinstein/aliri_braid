@@ -1,13 +1,14 @@
 use std::borrow::Cow;
 
-use self::check_mode::{CheckMode, IndefiniteCheckMode};
-use self::impls::{DelegatingImplOption, ImplOption, Impls};
 use quote::{format_ident, ToTokens, TokenStreamExt};
 use symbol::{parse_lit_into_string, parse_lit_into_type};
 use syn::spanned::Spanned;
 
-pub use self::borrowed::RefCodeGen;
-pub use self::owned::OwnedCodeGen;
+pub use self::{borrowed::RefCodeGen, owned::OwnedCodeGen};
+use self::{
+    check_mode::{CheckMode, IndefiniteCheckMode},
+    impls::{DelegatingImplOption, ImplOption, Impls},
+};
 
 mod borrowed;
 mod check_mode;

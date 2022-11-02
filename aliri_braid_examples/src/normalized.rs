@@ -12,10 +12,9 @@
 //! for a given type for additional information on what is considered
 //! a valid or normalizable value for the type.
 
+use std::{borrow::Cow, convert::Infallible, error, fmt};
+
 use aliri_braid::braid;
-use std::borrow::Cow;
-use std::convert::Infallible;
-use std::{error, fmt};
 
 /// An error indicating that the provided value was invalid
 #[derive(Debug)]

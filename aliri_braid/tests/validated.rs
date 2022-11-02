@@ -1,5 +1,6 @@
-use aliri_braid::braid;
 use std::{convert::Infallible, error, fmt};
+
+use aliri_braid::braid;
 
 #[derive(Debug)]
 pub enum InvalidScopeToken {
@@ -53,8 +54,9 @@ impl aliri_braid::Validator for ScopeToken {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use std::borrow::Borrow;
+
+    use super::*;
 
     #[test]
     fn owned_handles_valid() {

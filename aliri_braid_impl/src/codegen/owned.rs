@@ -1,5 +1,6 @@
-use super::{impls::ToImpl, AttrList, CheckMode, Field, Impls, StdLib};
 use quote::{quote, ToTokens};
+
+use super::{impls::ToImpl, AttrList, CheckMode, Field, Impls, StdLib};
 
 pub struct OwnedCodeGen<'a> {
     pub common_attrs: &'a [syn::Attribute],
@@ -66,12 +67,9 @@ impl<'a> OwnedCodeGen<'a> {
         );
 
         let doc_comment_unsafe = format!(
-            "Constructs a new {} without validation\n\
-        \n\
-        # Safety\n\
-        \n\
-        Consumers of this function must ensure that values conform to [`{}`]. \
-        Failure to maintain this invariant may lead to undefined behavior.",
+            "Constructs a new {} without validation\n\n# Safety\n\nConsumers of this function \
+             must ensure that values conform to [`{}`]. Failure to maintain this invariant may \
+             lead to undefined behavior.",
             self.ty, validator_tokens
         );
 
@@ -123,18 +121,15 @@ impl<'a> OwnedCodeGen<'a> {
         );
 
         let static_doc_comment = format!(
-            "Constructs a new {} from a static reference if it conforms to [`{}`], normalizing the input",
+            "Constructs a new {} from a static reference if it conforms to [`{}`], normalizing \
+             the input",
             self.ty, normalizer_tokens
         );
 
         let doc_comment_unsafe = format!(
-            "Constructs a new {} without validation or normalization\n\
-            \n\
-            # Safety\n\
-            \n\
-            Consumers of this function must ensure that values conform to [`{}`] and \
-            are in normalized form. Failure to maintain this invariant may lead to \
-            undefined behavior.",
+            "Constructs a new {} without validation or normalization\n\n# Safety\n\nConsumers of \
+             this function must ensure that values conform to [`{}`] and are in normalized form. \
+             Failure to maintain this invariant may lead to undefined behavior.",
             self.ty, normalizer_tokens
         );
 
@@ -181,9 +176,7 @@ impl<'a> OwnedCodeGen<'a> {
 
     fn make_into_boxed_ref(&self) -> proc_macro2::TokenStream {
         let doc = format!(
-            "Converts this `{}` into a [`Box<{}>`]\n\
-            \n\
-            This will drop any excess capacity.",
+            "Converts this `{}` into a [`Box<{}>`]\n\nThis will drop any excess capacity.",
             self.ty,
             self.ref_ty.to_token_stream(),
         );
@@ -193,9 +186,8 @@ impl<'a> OwnedCodeGen<'a> {
         let alloc = self.std_lib.alloc();
         let box_pointer_reinterpret_safety_comment = {
             let doc = format!(
-                "SAFETY: `{ty}` is `#[repr(transparent)]` around a single `str` \
-                field, so a `*mut str` can be safely reinterpreted as a \
-                `*mut {ty}`",
+                "SAFETY: `{ty}` is `#[repr(transparent)]` around a single `str` field, so a `*mut \
+                 str` can be safely reinterpreted as a `*mut {ty}`",
                 ty = self.ref_ty.to_token_stream(),
             );
 
@@ -404,8 +396,8 @@ impl<'a> OwnedCodeGen<'a> {
 
     fn unchecked_safety_comment(is_normalized: bool) -> proc_macro2::TokenStream {
         let doc = format!(
-            "SAFETY: The value was satisfies the type's invariant and \
-            conforms to the required implicit contracts of the {}.",
+            "SAFETY: The value was satisfies the type's invariant and conforms to the required \
+             implicit contracts of the {}.",
             if is_normalized {
                 "normalizer"
             } else {

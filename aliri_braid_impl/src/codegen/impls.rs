@@ -1,5 +1,6 @@
-use super::{check_mode::CheckMode, OwnedCodeGen, RefCodeGen};
 use quote::{quote, ToTokens};
+
+use super::{check_mode::CheckMode, OwnedCodeGen, RefCodeGen};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ImplOption {

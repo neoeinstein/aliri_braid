@@ -9,8 +9,9 @@
 //! for a given type for additional information on what is considered
 //! a valid value for the type.
 
-use aliri_braid::braid;
 use std::{convert::Infallible, error, fmt};
+
+use aliri_braid::braid;
 
 /// An error indicating that the provided string is not a valid scope token
 #[derive(Debug)]

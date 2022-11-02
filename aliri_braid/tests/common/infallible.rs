@@ -1,10 +1,12 @@
-use crate::{Orange, OrangeRef};
-use quickcheck_macros::quickcheck;
-use static_assertions::{assert_eq_align, assert_eq_size, assert_eq_size_ptr, assert_eq_size_val};
 use std::{
     collections::{BTreeSet, HashSet},
     convert::TryInto,
 };
+
+use quickcheck_macros::quickcheck;
+use static_assertions::{assert_eq_align, assert_eq_size, assert_eq_size_ptr, assert_eq_size_val};
+
+use crate::{Orange, OrangeRef};
 
 #[test]
 pub fn equality_tests() {
@@ -42,8 +44,10 @@ pub fn debug_and_display_tests() {
 #[cfg_attr(miri, ignore = "takes too long on miri")]
 #[quickcheck]
 fn owned_and_borrowed_hashes_are_equivalent(s: String) -> bool {
-    use std::collections::hash_map::DefaultHasher;
-    use std::hash::{Hash, Hasher};
+    use std::{
+        collections::hash_map::DefaultHasher,
+        hash::{Hash, Hasher},
+    };
 
     let owned = Orange::new(s.clone());
 

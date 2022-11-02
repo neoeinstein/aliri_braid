@@ -9,8 +9,9 @@ pub struct BasicExampleBuf;
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use std::borrow::Borrow;
+
+    use super::*;
 
     #[test]
     fn constant_ref_works() {

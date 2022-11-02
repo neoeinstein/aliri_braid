@@ -39,14 +39,14 @@
 //! Once created, braids can be passed around as strongly-typed, immutable strings.
 //!
 //! ```
-//!# use aliri_braid::braid;
-//!#
+//! # use aliri_braid::braid;
+//! #
 //! fn take_strong_string(n: DatabaseName) {}
 //! fn borrow_strong_string(n: &DatabaseNameRef) {}
 //!
-//!# #[braid]
-//!# pub struct DatabaseName;
-//!#
+//! # #[braid]
+//! # pub struct DatabaseName;
+//! #
 //! let owned = DatabaseName::new(String::from("mongo"));
 //! borrow_strong_string(&owned);
 //! take_strong_string(owned);
@@ -55,14 +55,14 @@
 //! A braid can also be untyped for use in stringly-typed interfaces.
 //!
 //! ```
-//!# use aliri_braid::braid;
-//!#
+//! # use aliri_braid::braid;
+//! #
 //! fn take_raw_string(s: String) {}
 //! fn borrow_raw_str(s: &str) {}
 //!
-//!# #[braid]
-//!# pub struct DatabaseName;
-//!#
+//! # #[braid]
+//! # pub struct DatabaseName;
+//! #
 //! let owned = DatabaseName::new(String::from("mongo"));
 //! borrow_raw_str(owned.as_str());
 //! take_raw_string(owned.take());
@@ -72,14 +72,14 @@
 //! with `Ref` appended to the end.
 //!
 //! ```
-//!# use aliri_braid::braid;
-//!#
+//! # use aliri_braid::braid;
+//! #
 //! #[braid]
 //! pub struct DatabaseName;
 //!
 //! let owned = DatabaseName::from_static("mongo");
 //! let borrowed = DatabaseNameRef::from_static("mongo");
-//!# assert_eq!(owned, borrowed);
+//! # assert_eq!(owned, borrowed);
 //! ```
 //!
 //! If the name ends with `Buf`, however, then the borrowed form will drop the `Buf`, similar
@@ -90,14 +90,14 @@
 //! [std::path::Path]: https://doc.rust-lang.org/std/path/struct.Path.html
 //!
 //! ```
-//!# use aliri_braid::braid;
-//!#
+//! # use aliri_braid::braid;
+//! #
 //! #[braid]
 //! pub struct DatabaseNameBuf;
 //!
 //! let owned = DatabaseNameBuf::from_static("mongo");
 //! let borrowed = DatabaseName::from_static("mongo");
-//!# assert_eq!(owned, borrowed);
+//! # assert_eq!(owned, borrowed);
 //! ```
 //!
 //! If a different name is desired, this behavior can be
@@ -105,15 +105,15 @@
 //! parameter.
 //!
 //! ```
-//!# use aliri_braid::braid;
-//!#
+//! # use aliri_braid::braid;
+//! #
 //! #[braid(ref = "TempDb")]
 //! pub struct DatabaseNameBuf;
 //!
 //! let owned = DatabaseNameBuf::from_static("mongo");
 //! let borrowed = TempDb::from_static("mongo");
 //! let to_owned: DatabaseNameBuf = borrowed.to_owned();
-//!# assert_eq!(owned, borrowed);
+//! # assert_eq!(owned, borrowed);
 //! ```
 //!
 //! A default doc comment is added to the borrowed form that refers back to the owned form.
@@ -121,14 +121,14 @@
 //! documentation.
 //!
 //! ```
-//!# use aliri_braid::braid;
-//!#
+//! # use aliri_braid::braid;
+//! #
 //! #[braid(ref_doc = "A temporary reference to a database name")]
 //! pub struct DatabaseName;
-//!#
-//!# let owned = DatabaseName::from_static("mongo");
-//!# let borrowed = DatabaseNameRef::from_static("mongo");
-//!# assert_eq!(owned, borrowed);
+//! #
+//! # let owned = DatabaseName::from_static("mongo");
+//! # let borrowed = DatabaseNameRef::from_static("mongo");
+//! # assert_eq!(owned, borrowed);
 //! ```
 //!
 //! Attributes added to the braid will be applied to both the owned and borrowed forms
@@ -156,8 +156,8 @@
 //! extended to support some mutation and introspection.
 //!
 //! ```
-//!# use aliri_braid::braid;
-//!#
+//! # use aliri_braid::braid;
+//! #
 //! #[braid]
 //! pub struct AmazonArnBuf;
 //!
@@ -196,15 +196,15 @@
 //!     pub struct AmazonArnBuf;
 //!
 //!     /* Additional impls that need access to the inner values */
-//!#     impl AmazonArn {
-//!#         pub fn get_segments(&self) -> std::str::Split<char> {
-//!#             self.0.split(':')
-//!#         }
-//!#
-//!#         pub fn get_service(&self) -> &str {
-//!#             self.get_segments().nth(2).unwrap_or("")
-//!#         }
-//!#     }
+//! #     impl AmazonArn {
+//! #         pub fn get_segments(&self) -> std::str::Split<char> {
+//! #             self.0.split(':')
+//! #         }
+//! #
+//! #         pub fn get_service(&self) -> &str {
+//! #             self.get_segments().nth(2).unwrap_or("")
+//! #         }
+//! #     }
 //! }
 //!
 //! pub use amazon_arn::{AmazonArnBuf, AmazonArn};
@@ -226,11 +226,11 @@
 //! the block creating `ex_ref`.
 //!
 //! ```compile_fail
-//!# use aliri_braid::braid;
-//!#
-//!# #[braid]
-//!# pub struct DatabaseName;
-//!#
+//! # use aliri_braid::braid;
+//! #
+//! # #[braid]
+//! # pub struct DatabaseName;
+//! #
 //! let ex_ref = {
 //!     let data = DatabaseName::new("test string");
 //!     DatabaseNameRef::from_str(data.as_str())
@@ -269,18 +269,18 @@
 //! normalized.
 //!
 //! ```
-//!# use aliri_braid::braid;
-//!#
+//! # use aliri_braid::braid;
+//! #
 //! #[derive(Debug, PartialEq, Eq)]
 //! pub struct InvalidUsername;
 //! // Error implementation elided
-//!# impl std::fmt::Display for InvalidUsername {
-//!#     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-//!#         f.write_str("invalid username")
-//!#     }
-//!# }
-//!# aliri_braid::from_infallible!(InvalidUsername);
-//!# impl std::error::Error for InvalidUsername {}
+//! # impl std::fmt::Display for InvalidUsername {
+//! #     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+//! #         f.write_str("invalid username")
+//! #     }
+//! # }
+//! # aliri_braid::from_infallible!(InvalidUsername);
+//! # impl std::error::Error for InvalidUsername {}
 //!
 //! #[braid(validator)]
 //! pub struct NonRootUsername;
@@ -313,19 +313,19 @@
 //! implements the validation logic.
 //!
 //! ```
-//!# use aliri_braid::braid;
-//!#
-//!# #[derive(Debug, PartialEq, Eq)]
-//!# pub struct InvalidUsername;
-//!# // Error implementation elided
-//!# impl std::fmt::Display for InvalidUsername {
-//!#     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-//!#         f.write_str("invalid username")
-//!#     }
-//!# }
-//!# aliri_braid::from_infallible!(InvalidUsername);
-//!# impl std::error::Error for InvalidUsername {}
-//!#
+//! # use aliri_braid::braid;
+//! #
+//! # #[derive(Debug, PartialEq, Eq)]
+//! # pub struct InvalidUsername;
+//! # // Error implementation elided
+//! # impl std::fmt::Display for InvalidUsername {
+//! #     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+//! #         f.write_str("invalid username")
+//! #     }
+//! # }
+//! # aliri_braid::from_infallible!(InvalidUsername);
+//! # impl std::error::Error for InvalidUsername {}
+//! #
 //! #[braid(validator = "UsernameValidator")]
 //! pub struct NonRootUsername;
 //!
@@ -333,14 +333,14 @@
 //!
 //! impl aliri_braid::Validator for UsernameValidator {
 //!     /* … */
-//!#     type Error = InvalidUsername;
-//!#     fn validate(s: &str) -> Result<(), Self::Error> {
-//!#         if s.is_empty() || s.eq_ignore_ascii_case("root") {
-//!#             Err(InvalidUsername)
-//!#         } else {
-//!#             Ok(())
-//!#         }
-//!#     }
+//! #     type Error = InvalidUsername;
+//! #     fn validate(s: &str) -> Result<(), Self::Error> {
+//! #         if s.is_empty() || s.eq_ignore_ascii_case("root") {
+//! #             Err(InvalidUsername)
+//! #         } else {
+//! #             Ok(())
+//! #         }
+//! #     }
 //! }
 //!
 //! assert!(NonRootUsername::new("".to_string()).is_err());
@@ -407,19 +407,19 @@
 //! characters, but that is also normalized to use lowercase ASCII letters.
 //!
 //! ```
-//!# use aliri_braid::braid;
+//! # use aliri_braid::braid;
 //! use std::borrow::Cow;
 //!
 //! #[derive(Debug, PartialEq, Eq)]
 //! pub struct InvalidHeaderName;
 //! // Error implementation elided
-//!# impl std::fmt::Display for InvalidHeaderName {
-//!#     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-//!#         f.write_str("invalid header name")
-//!#     }
-//!# }
-//!# aliri_braid::from_infallible!(InvalidHeaderName);
-//!# impl std::error::Error for InvalidHeaderName {}
+//! # impl std::fmt::Display for InvalidHeaderName {
+//! #     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+//! #         f.write_str("invalid header name")
+//! #     }
+//! # }
+//! # aliri_braid::from_infallible!(InvalidHeaderName);
+//! # impl std::error::Error for InvalidHeaderName {}
 //!
 //! #[braid(normalizer)]
 //! pub struct HeaderName;
@@ -475,33 +475,33 @@
 //! on these constraints being upheld.
 //!
 //! ```compile_fail
-//!# use aliri_braid::braid;
-//!#
-//!# #[derive(Debug, PartialEq, Eq)]
-//!# pub struct InvalidUsername;
-//!# // Error implementation elided
-//!# impl std::fmt::Display for InvalidUsername {
-//!#     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-//!#         f.write_str("invalid username")
-//!#     }
-//!# }
-//!# aliri_braid::from_infallible!(InvalidUsername);
-//!# impl std::error::Error for InvalidUsername {}
-//!#
-//!# #[braid(validator)]
-//!# pub struct NonRootUsername;
-//!#
-//!# impl aliri_braid::Validator for NonRootUsername {
-//!#     type Error = InvalidUsername;
-//!#     fn validate(s: &str) -> Result<(), Self::Error> {
-//!#         if s.is_empty() || s.eq_ignore_ascii_case("root") {
-//!#             Err(InvalidUsername)
-//!#         } else {
-//!#             Ok(())
-//!#         }
-//!#     }
-//!# }
-//!#
+//! # use aliri_braid::braid;
+//! #
+//! # #[derive(Debug, PartialEq, Eq)]
+//! # pub struct InvalidUsername;
+//! # // Error implementation elided
+//! # impl std::fmt::Display for InvalidUsername {
+//! #     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+//! #         f.write_str("invalid username")
+//! #     }
+//! # }
+//! # aliri_braid::from_infallible!(InvalidUsername);
+//! # impl std::error::Error for InvalidUsername {}
+//! #
+//! # #[braid(validator)]
+//! # pub struct NonRootUsername;
+//! #
+//! # impl aliri_braid::Validator for NonRootUsername {
+//! #     type Error = InvalidUsername;
+//! #     fn validate(s: &str) -> Result<(), Self::Error> {
+//! #         if s.is_empty() || s.eq_ignore_ascii_case("root") {
+//! #             Err(InvalidUsername)
+//! #         } else {
+//! #             Ok(())
+//! #         }
+//! #     }
+//! # }
+//! #
 //! NonRootUsername::new_unchecked("");
 //! NonRootUsernameRef::from_str_unchecked("nobody");
 //! ```
@@ -509,33 +509,33 @@
 //! If you find violations of your guarantees, you can look specifically for uses of `unsafe`.
 //!
 //! ```
-//!# use aliri_braid::braid;
-//!#
-//!# #[derive(Debug, PartialEq, Eq)]
-//!# pub struct InvalidUsername;
-//!# // Error implementation elided
-//!# impl std::fmt::Display for InvalidUsername {
-//!#     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-//!#         f.write_str("invalid username")
-//!#     }
-//!# }
-//!# aliri_braid::from_infallible!(InvalidUsername);
-//!# impl std::error::Error for InvalidUsername {}
-//!#
-//!# #[braid(validator)]
-//!# pub struct NonRootUsername;
-//!#
-//!# impl aliri_braid::Validator for NonRootUsername {
-//!#     type Error = InvalidUsername;
-//!#     fn validate(s: &str) -> Result<(), Self::Error> {
-//!#         if s.is_empty() || s.eq_ignore_ascii_case("root") {
-//!#             Err(InvalidUsername)
-//!#         } else {
-//!#             Ok(())
-//!#         }
-//!#     }
-//!# }
-//!#
+//! # use aliri_braid::braid;
+//! #
+//! # #[derive(Debug, PartialEq, Eq)]
+//! # pub struct InvalidUsername;
+//! # // Error implementation elided
+//! # impl std::fmt::Display for InvalidUsername {
+//! #     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+//! #         f.write_str("invalid username")
+//! #     }
+//! # }
+//! # aliri_braid::from_infallible!(InvalidUsername);
+//! # impl std::error::Error for InvalidUsername {}
+//! #
+//! # #[braid(validator)]
+//! # pub struct NonRootUsername;
+//! #
+//! # impl aliri_braid::Validator for NonRootUsername {
+//! #     type Error = InvalidUsername;
+//! #     fn validate(s: &str) -> Result<(), Self::Error> {
+//! #         if s.is_empty() || s.eq_ignore_ascii_case("root") {
+//! #             Err(InvalidUsername)
+//! #         } else {
+//! #             Ok(())
+//! #         }
+//! #     }
+//! # }
+//! #
 //! unsafe {
 //!     NonRootUsername::new_unchecked(String::from(""));
 //!     NonRootUsernameRef::from_str_unchecked("root");
@@ -622,12 +622,13 @@
 //! ## Omitting `Clone`
 //!
 //! For some types, it may be desirable to prevent arbitrary cloning of a type. In that case,
-//! the `clone` parameter can be used to prevent automatically deriving [`Clone`][core::clone::Clone].
+//! the `clone` parameter can be used to prevent automatically deriving
+//! [`Clone`][core::clone::Clone].
 //!
 //! ```
-//!# use aliri_braid::braid;
-//!# use static_assertions::assert_not_impl_any;
-//!#
+//! # use aliri_braid::braid;
+//! # use static_assertions::assert_not_impl_any;
+//! #
 //! #[braid(clone = "omit")]
 //! pub struct Sensitive;
 //!
@@ -646,7 +647,8 @@
 //!
 //! The modes have the following effects:
 //!
-//! * `impl`: Format the owned and reference type transparently as the underlying string (slice) type.
+//! * `impl`: Format the owned and reference type transparently as the underlying string (slice)
+//!   type.
 //! * `owned`: Automatically provide an owned implementation that transparently delegates to the
 //!   implementation of the borrowed form. The consumer must provide their custom implementation on
 //!   the borrowed form.
@@ -659,9 +661,9 @@
 //! As an example:
 //!
 //! ```
-//!# use aliri_braid::braid;
+//! # use aliri_braid::braid;
 //! use std::fmt;
-//!#
+//! #
 //! #[braid(clone = "omit", display = "owned", debug = "owned")]
 //! pub struct Sensitive;
 //!
@@ -698,15 +700,15 @@
 //! [`Deserialize`]: https://docs.rs/serde/*/serde/trait.Deserialize.html
 //!
 //! ```
-//!# use aliri_braid::braid;
-//!#
+//! # use aliri_braid::braid;
+//! #
 //! #[braid(serde)]
 //! pub struct Username;
 //!
 //! let username = Username::from_static("root");
 //! let json = serde_json::to_string(&username).unwrap();
 //! let new_username: Username = serde_json::from_str(&json).unwrap();
-//!# assert_eq!(username, new_username);
+//! # assert_eq!(username, new_username);
 //! ```
 //!
 //! Such automatic implementations will also properly handle string values that require
@@ -714,18 +716,18 @@
 //! still protecting the integrity of the type.
 //!
 //! ```
-//!# use aliri_braid::braid;
-//!#
+//! # use aliri_braid::braid;
+//! #
 //! #[derive(Debug, PartialEq, Eq)]
 //! pub struct InvalidUsername;
 //! // Error implementation elided
-//!# impl std::fmt::Display for InvalidUsername {
-//!#     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-//!#         f.write_str("invalid username")
-//!#     }
-//!# }
-//!# aliri_braid::from_infallible!(InvalidUsername);
-//!# impl std::error::Error for InvalidUsername {}
+//! # impl std::fmt::Display for InvalidUsername {
+//! #     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+//! #         f.write_str("invalid username")
+//! #     }
+//! # }
+//! # aliri_braid::from_infallible!(InvalidUsername);
+//! # impl std::error::Error for InvalidUsername {}
 //!
 //! #[braid(serde, validator)]
 //! pub struct Username;
@@ -939,5 +941,4 @@ macro_rules! from_infallible {
     };
 }
 
-pub use aliri_braid_impl::braid;
-pub use aliri_braid_impl::braid_ref;
+pub use aliri_braid_impl::{braid, braid_ref};

@@ -1,6 +1,8 @@
-use super::{impls::ToImpl, AttrList, CheckMode, Field, FieldName, Impls, StdLib};
-use quote::{quote, ToTokens, TokenStreamExt};
 use std::borrow::Cow;
+
+use quote::{quote, ToTokens, TokenStreamExt};
+
+use super::{impls::ToImpl, AttrList, CheckMode, Field, FieldName, Impls, StdLib};
 
 pub struct RefCodeGen<'a> {
     pub doc: &'a [Cow<'a, syn::Lit>],
@@ -46,9 +48,8 @@ impl<'a> RefCodeGen<'a> {
 
     fn pointer_reinterpret_safety_comment(&self, is_mut: bool) -> proc_macro2::TokenStream {
         let doc = format!(
-            "SAFETY: `{ty}` is `#[repr(transparent)]` around a single `str` \
-            field, so a `*{ptr} str` can be safely reinterpreted as a \
-            `*{ptr} {ty}`",
+            "SAFETY: `{ty}` is `#[repr(transparent)]` around a single `str` field, so a `*{ptr} \
+             str` can be safely reinterpreted as a `*{ptr} {ty}`",
             ty = self.ident,
             ptr = if is_mut { "mut" } else { "const" },
         );
@@ -61,8 +62,8 @@ impl<'a> RefCodeGen<'a> {
 
     fn unchecked_safety_comment(is_normalized: bool) -> proc_macro2::TokenStream {
         let doc = format!(
-            "SAFETY: The value was just checked and found to already \
-            conform to the required implicit contracts of the {}.",
+            "SAFETY: The value was just checked and found to already conform to the required \
+             implicit contracts of the {}.",
             if is_normalized {
                 "normalizer"
             } else {
@@ -140,22 +141,21 @@ impl<'a> RefCodeGen<'a> {
 
     fn fallible_inherent(&self, validator: &syn::Type) -> proc_macro2::TokenStream {
         let doc_comment = format!(
-            "Transparently reinterprets the string slice as a strongly-typed {} \
-            if it conforms to [`{}`]",
+            "Transparently reinterprets the string slice as a strongly-typed {} if it conforms to \
+             [`{}`]",
             self.ident,
             validator.to_token_stream(),
         );
 
         let static_doc_comment = format!(
-            "Transparently reinterprets the static string slice as a strongly-typed {} \
-            if it conforms to [`{}`]",
+            "Transparently reinterprets the static string slice as a strongly-typed {} if it \
+             conforms to [`{}`]",
             self.ident,
             validator.to_token_stream(),
         );
 
         let doc_comment_unsafe = format!(
-            "Transparently reinterprets the string slice as a strongly-typed {} \
-            without validating",
+            "Transparently reinterprets the string slice as a strongly-typed {} without validating",
             self.ident,
         );
 
@@ -225,48 +225,41 @@ impl<'a> RefCodeGen<'a> {
 
     fn normalized_inherent(&self, normalizer: &syn::Type) -> proc_macro2::TokenStream {
         let doc_comment = format!(
-            "Transparently reinterprets the string slice as a strongly-typed {} \
-            if it conforms to [`{}`], normalizing if necessary",
+            "Transparently reinterprets the string slice as a strongly-typed {} if it conforms to \
+             [`{}`], normalizing if necessary",
             self.ident,
             normalizer.to_token_stream(),
         );
 
         let static_doc_comment = format!(
-            "Transparently reinterprets a static string slice as a strongly-typed {} \
-            if it conforms to [`{}`], normalizing if necessary",
+            "Transparently reinterprets a static string slice as a strongly-typed {} if it \
+             conforms to [`{}`], normalizing if necessary",
             self.ident,
             normalizer.to_token_stream(),
         );
 
         let doc_comment_norm = format!(
-            "Transparently reinterprets the string slice as a strongly-typed `{}` \
-            if it conforms to [`{}`], producing an error if normalization is necessary",
+            "Transparently reinterprets the string slice as a strongly-typed `{}` if it conforms \
+             to [`{}`], producing an error if normalization is necessary",
             self.ident,
             normalizer.to_token_stream(),
         );
 
         let doc_comment_unsafe = format!(
-            "Transparently reinterprets the string slice as a strongly-typed `{}` \
-            without validating\n\
-            \n\
-            # Safety\n\
-            \n\
-            Calls to this function must ensure that the value being passed conforms \
-            to [`{}`] and is already in normalized form. Failure to do this may \
-            result in undefined behavior if other code relies on this invariant.",
+            "Transparently reinterprets the string slice as a strongly-typed `{}` without \
+             validating\n\n# Safety\n\nCalls to this function must ensure that the value being \
+             passed conforms to [`{}`] and is already in normalized form. Failure to do this may \
+             result in undefined behavior if other code relies on this invariant.",
             self.ident,
             normalizer.to_token_stream(),
         );
 
         let doc_comment_cow_unsafe = format!(
-            "Transparently reinterprets the [`Cow<str>`][std::borrow::Cow] as a \
-            strongly-typed [`Cow`][std::borrow::Cow]`<{}>` without validating\n\
-            \n\
-            # Safety\n\
-            \n\
-            Calls to this function must ensure that the value being passed conforms \
-            to [`{}`] and is already in normalized form. Failure to do this may \
-            result in undefined behavior if other code relies on this invariant.",
+            "Transparently reinterprets the [`Cow<str>`][std::borrow::Cow] as a strongly-typed \
+             [`Cow`][std::borrow::Cow]`<{}>` without validating\n\n# Safety\n\nCalls to this \
+             function must ensure that the value being passed conforms to [`{}`] and is already \
+             in normalized form. Failure to do this may result in undefined behavior if other \
+             code relies on this invariant.",
             self.ident,
             normalizer.to_token_stream(),
         );

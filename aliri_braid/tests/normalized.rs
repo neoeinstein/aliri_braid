@@ -1,7 +1,6 @@
+use std::{borrow::Cow, convert::Infallible, error, fmt};
+
 use aliri_braid::braid;
-use std::borrow::Cow;
-use std::convert::Infallible;
-use std::{error, fmt};
 
 #[derive(Debug)]
 pub enum InvalidString {
