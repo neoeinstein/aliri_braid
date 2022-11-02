@@ -4,6 +4,8 @@ The format of this changelog is based on [Keep a Changelog](https://keepachangel
 
 ## [Unreleased]
 
+## [0.3.1] - 2022-11-02
+
 ### Fixed
 
 - Normalized braids with custom inner types would cause compiler errors on trying to convert from
