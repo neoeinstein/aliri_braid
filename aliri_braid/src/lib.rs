@@ -30,7 +30,7 @@
 //!
 //! ```
 //! use aliri_braid::braid;
-//! use smartstring::alias::String;
+//! use compact_str::CompactString as String;
 //!
 //! #[braid]
 //! pub struct UserId;
