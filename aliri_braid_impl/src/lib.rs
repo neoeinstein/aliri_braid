@@ -32,7 +32,7 @@ use syn::parse_macro_input;
 /// owned form.
 ///
 /// Available options:
-/// * `ref = "RefName"`
+/// * `ref_name = "RefName"`
 ///   * Sets the name of the borrowed type
 /// * `ref_doc = "Alternate doc comment"`
 ///   * Overrides the default doc comment for the borrowed type
@@ -65,11 +65,10 @@ use syn::parse_macro_input;
 ///   * Generates `no_std`-compatible braid (still requires `alloc`)
 #[proc_macro_attribute]
 pub fn braid(args: TokenStream, input: TokenStream) -> TokenStream {
-    let args = parse_macro_input!(args as syn::AttributeArgs);
-    let mut body = parse_macro_input!(input as syn::ItemStruct);
+    let args = parse_macro_input!(args as Params);
+    let body = parse_macro_input!(input as syn::ItemStruct);
 
-    Params::parse(&args)
-        .and_then(|p| p.build(&mut body))
+    args.build(body)
         .map_or_else(syn::Error::into_compile_error, |codegen| codegen.generate())
         .into()
 }
@@ -95,11 +94,10 @@ pub fn braid(args: TokenStream, input: TokenStream) -> TokenStream {
 ///   * Generates a `no_std`-compatible braid that doesn't require `alloc`
 #[proc_macro_attribute]
 pub fn braid_ref(args: TokenStream, input: TokenStream) -> TokenStream {
-    let args = parse_macro_input!(args as syn::AttributeArgs);
+    let args = parse_macro_input!(args as ParamsRef);
     let mut body = parse_macro_input!(input as syn::ItemStruct);
 
-    ParamsRef::parse(&args)
-        .and_then(|p| p.build(&mut body))
+    args.build(&mut body)
         .unwrap_or_else(syn::Error::into_compile_error)
         .into()
 }

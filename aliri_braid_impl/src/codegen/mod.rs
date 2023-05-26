@@ -1,7 +1,5 @@
-use std::borrow::Cow;
-
 use quote::{format_ident, ToTokens, TokenStreamExt};
-use symbol::{parse_lit_into_string, parse_lit_into_type};
+use symbol::{parse_expr_as_lit, parse_lit_into_string, parse_lit_into_type};
 use syn::spanned::Spanned;
 
 pub use self::{borrowed::RefCodeGen, owned::OwnedCodeGen};
@@ -16,7 +14,7 @@ mod impls;
 mod owned;
 mod symbol;
 
-pub type AttrList<'a> = syn::punctuated::Punctuated<&'a syn::NestedMeta, syn::Token![,]>;
+pub type AttrList = syn::punctuated::Punctuated<syn::Meta, syn::Token![,]>;
 
 #[derive(Clone, Debug)]
 pub struct StdLib {
@@ -50,18 +48,18 @@ impl Default for StdLib {
     }
 }
 
-pub struct Params<'a> {
+pub struct Params {
     ref_ty: Option<syn::Type>,
-    ref_doc: Vec<Cow<'a, syn::Lit>>,
-    ref_attrs: AttrList<'a>,
-    owned_attrs: AttrList<'a>,
+    ref_doc: Vec<syn::Lit>,
+    ref_attrs: AttrList,
+    owned_attrs: AttrList,
     std_lib: StdLib,
     check_mode: IndefiniteCheckMode,
     expose_inner: bool,
     impls: Impls,
 }
 
-impl<'a> Default for Params<'a> {
+impl Default for Params {
     fn default() -> Self {
         Self {
             ref_ty: None,
@@ -76,95 +74,105 @@ impl<'a> Default for Params<'a> {
     }
 }
 
-impl<'a> Params<'a> {
-    pub fn parse(args: &'a syn::AttributeArgs) -> Result<Self, syn::Error> {
+impl syn::parse::Parse for Params {
+    fn parse(input: syn::parse::ParseStream) -> Result<Self, syn::Error> {
         let mut params = Self::default();
+        let args =
+            syn::punctuated::Punctuated::<syn::Meta, syn::Token![,]>::parse_terminated(input)?;
 
         for arg in args {
-            match arg {
-                syn::NestedMeta::Meta(syn::Meta::NameValue(nv)) if nv.path == symbol::REF => {
-                    params.ref_ty = Some(parse_lit_into_type(symbol::REF, &nv.lit)?);
+            match &arg {
+                syn::Meta::NameValue(nv) if nv.path == symbol::REF => {
+                    params.ref_ty = Some(parse_lit_into_type(
+                        symbol::REF,
+                        parse_expr_as_lit(&nv.value)?,
+                    )?);
                 }
-                syn::NestedMeta::Meta(syn::Meta::NameValue(nv)) if nv.path == symbol::VALIDATOR => {
-                    let validator = parse_lit_into_type(symbol::VALIDATOR, &nv.lit)?;
+                syn::Meta::NameValue(nv) if nv.path == symbol::VALIDATOR => {
+                    let validator =
+                        parse_lit_into_type(symbol::VALIDATOR, parse_expr_as_lit(&nv.value)?)?;
                     params
                         .check_mode
                         .try_set_validator(Some(validator))
-                        .map_err(|s| syn::Error::new_spanned(arg, s))?;
+                        .map_err(|s| syn::Error::new_spanned(nv, s))?;
                 }
-                syn::NestedMeta::Meta(syn::Meta::NameValue(nv))
-                    if nv.path == symbol::NORMALIZER =>
-                {
-                    let normalizer = parse_lit_into_type(symbol::NORMALIZER, &nv.lit)?;
+                syn::Meta::NameValue(nv) if nv.path == symbol::NORMALIZER => {
+                    let normalizer =
+                        parse_lit_into_type(symbol::NORMALIZER, parse_expr_as_lit(&nv.value)?)?;
                     params
                         .check_mode
                         .try_set_normalizer(Some(normalizer))
-                        .map_err(|s| syn::Error::new_spanned(arg, s))?;
+                        .map_err(|s| syn::Error::new_spanned(nv, s))?;
                 }
-                syn::NestedMeta::Meta(syn::Meta::NameValue(nv)) if nv.path == symbol::REF_DOC => {
-                    params.ref_doc.push(Cow::Borrowed(&nv.lit));
+                syn::Meta::NameValue(nv) if nv.path == symbol::REF_DOC => {
+                    params
+                        .ref_doc
+                        .push(parse_expr_as_lit(&nv.value)?.to_owned());
                 }
-                syn::NestedMeta::Meta(syn::Meta::List(nv)) if nv.path == symbol::REF_ATTR => {
-                    params.ref_attrs.extend(nv.nested.iter());
+                syn::Meta::List(nv) if nv.path == symbol::REF_ATTR => {
+                    params.ref_attrs.extend(nv.parse_args::<syn::Meta>());
                 }
-                syn::NestedMeta::Meta(syn::Meta::List(nv)) if nv.path == symbol::OWNED_ATTR => {
-                    params.owned_attrs.extend(nv.nested.iter());
+                syn::Meta::List(nv) if nv.path == symbol::OWNED_ATTR => {
+                    params.owned_attrs.extend(nv.parse_args::<syn::Meta>());
                 }
-                syn::NestedMeta::Meta(syn::Meta::NameValue(nv)) if nv.path == symbol::DEBUG => {
-                    params.impls.debug = parse_lit_into_string(symbol::DEBUG, &nv.lit)?
-                        .parse::<DelegatingImplOption>()
-                        .map_err(|e| syn::Error::new_spanned(&arg, e.to_owned()))?
-                        .into();
+                syn::Meta::NameValue(nv) if nv.path == symbol::DEBUG => {
+                    params.impls.debug =
+                        parse_lit_into_string(symbol::DEBUG, parse_expr_as_lit(&nv.value)?)?
+                            .parse::<DelegatingImplOption>()
+                            .map_err(|e| syn::Error::new_spanned(&arg, e.to_owned()))?
+                            .into();
                 }
-                syn::NestedMeta::Meta(syn::Meta::NameValue(nv)) if nv.path == symbol::DISPLAY => {
-                    params.impls.display = parse_lit_into_string(symbol::DISPLAY, &nv.lit)?
-                        .parse::<DelegatingImplOption>()
-                        .map_err(|e| syn::Error::new_spanned(&arg, e.to_owned()))?
-                        .into();
+                syn::Meta::NameValue(nv) if nv.path == symbol::DISPLAY => {
+                    params.impls.display =
+                        parse_lit_into_string(symbol::DISPLAY, parse_expr_as_lit(&nv.value)?)?
+                            .parse::<DelegatingImplOption>()
+                            .map_err(|e| syn::Error::new_spanned(&arg, e.to_owned()))?
+                            .into();
                 }
-                syn::NestedMeta::Meta(syn::Meta::NameValue(nv)) if nv.path == symbol::ORD => {
-                    params.impls.ord = parse_lit_into_string(symbol::ORD, &nv.lit)?
-                        .parse::<DelegatingImplOption>()
-                        .map_err(|e| syn::Error::new_spanned(&arg, e.to_owned()))?
-                        .into();
+                syn::Meta::NameValue(nv) if nv.path == symbol::ORD => {
+                    params.impls.ord =
+                        parse_lit_into_string(symbol::ORD, parse_expr_as_lit(&nv.value)?)?
+                            .parse::<DelegatingImplOption>()
+                            .map_err(|e| syn::Error::new_spanned(&arg, e.to_owned()))?
+                            .into();
                 }
-                syn::NestedMeta::Meta(syn::Meta::NameValue(nv)) if nv.path == symbol::CLONE => {
-                    params.impls.clone = parse_lit_into_string(symbol::CLONE, &nv.lit)?
-                        .parse::<ImplOption>()
-                        .map_err(|e| syn::Error::new_spanned(&arg, e.to_owned()))?
-                        .into();
+                syn::Meta::NameValue(nv) if nv.path == symbol::CLONE => {
+                    params.impls.clone =
+                        parse_lit_into_string(symbol::CLONE, parse_expr_as_lit(&nv.value)?)?
+                            .parse::<ImplOption>()
+                            .map_err(|e| syn::Error::new_spanned(&arg, e.to_owned()))?
+                            .into();
                 }
-                syn::NestedMeta::Meta(syn::Meta::NameValue(nv)) if nv.path == symbol::SERDE => {
-                    params.impls.serde = parse_lit_into_string(symbol::SERDE, &nv.lit)?
-                        .parse::<ImplOption>()
-                        .map_err(|e| syn::Error::new_spanned(&arg, e.to_owned()))?
-                        .into();
+                syn::Meta::NameValue(nv) if nv.path == symbol::SERDE => {
+                    params.impls.serde =
+                        parse_lit_into_string(symbol::SERDE, parse_expr_as_lit(&nv.value)?)?
+                            .parse::<ImplOption>()
+                            .map_err(|e| syn::Error::new_spanned(&arg, e.to_owned()))?
+                            .into();
                 }
-                syn::NestedMeta::Meta(syn::Meta::Path(p)) if p == symbol::SERDE => {
+                syn::Meta::Path(p) if p == symbol::SERDE => {
                     params.impls.serde = ImplOption::Implement.into();
                 }
-                syn::NestedMeta::Meta(syn::Meta::Path(p)) if p == symbol::VALIDATOR => {
+                syn::Meta::Path(p) if p == symbol::VALIDATOR => {
                     params
                         .check_mode
                         .try_set_validator(None)
-                        .map_err(|s| syn::Error::new_spanned(arg, s))?;
+                        .map_err(|s| syn::Error::new_spanned(p, s))?;
                 }
-                syn::NestedMeta::Meta(syn::Meta::Path(p)) if p == symbol::NORMALIZER => {
+                syn::Meta::Path(p) if p == symbol::NORMALIZER => {
                     params
                         .check_mode
                         .try_set_normalizer(None)
-                        .map_err(|s| syn::Error::new_spanned(arg, s))?;
+                        .map_err(|s| syn::Error::new_spanned(p, s))?;
                 }
-                syn::NestedMeta::Meta(syn::Meta::Path(p)) if p == symbol::NO_STD => {
+                syn::Meta::Path(p) if p == symbol::NO_STD => {
                     params.std_lib = StdLib::no_std(p.span());
                 }
-                syn::NestedMeta::Meta(syn::Meta::Path(p)) if p == symbol::NO_EXPOSE => {
+                syn::Meta::Path(p) if p == symbol::NO_EXPOSE => {
                     params.expose_inner = false;
                 }
-                syn::NestedMeta::Meta(
-                    syn::Meta::Path(ref path)
-                    | syn::Meta::NameValue(syn::MetaNameValue { ref path, .. }),
-                ) => {
+                syn::Meta::Path(ref path)
+                | syn::Meta::NameValue(syn::MetaNameValue { ref path, .. }) => {
                     return Err(syn::Error::new_spanned(
                         &arg,
                         format!("unsupported argument `{}`", path.to_token_stream()),
@@ -181,8 +189,10 @@ impl<'a> Params<'a> {
 
         Ok(params)
     }
+}
 
-    pub fn build(self, body: &'a mut syn::ItemStruct) -> Result<CodeGen, syn::Error> {
+impl Params {
+    pub fn build(self, mut body: syn::ItemStruct) -> Result<CodeGen, syn::Error> {
         let Params {
             ref_ty,
             ref_doc,
@@ -200,9 +210,11 @@ impl<'a> Params<'a> {
         let ref_ty = ref_ty.unwrap_or_else(|| infer_ref_type_from_owned_name(owned_ty));
         let check_mode = check_mode.infer_validator_if_missing(owned_ty);
         let field = Field {
-            attrs: field_attrs,
-            name: field_ident.map_or(FieldName::Unnamed, FieldName::Named),
-            ty: wrapped_type,
+            attrs: field_attrs.to_owned(),
+            name: field_ident
+                .cloned()
+                .map_or(FieldName::Unnamed, FieldName::Named),
+            ty: wrapped_type.to_owned(),
         };
 
         Ok(CodeGen {
@@ -239,62 +251,67 @@ impl Default for ParamsRef {
     }
 }
 
-impl ParamsRef {
-    pub fn parse(args: &syn::AttributeArgs) -> Result<Self, syn::Error> {
+impl syn::parse::Parse for ParamsRef {
+    fn parse(input: syn::parse::ParseStream) -> Result<Self, syn::Error> {
         let mut params = Self::default();
+        let args =
+            syn::punctuated::Punctuated::<syn::Meta, syn::Token![,]>::parse_terminated(input)?;
 
         for arg in args {
             match arg {
-                syn::NestedMeta::Meta(syn::Meta::NameValue(nv)) if nv.path == symbol::VALIDATOR => {
-                    let validator = parse_lit_into_type(symbol::VALIDATOR, &nv.lit)?;
+                syn::Meta::NameValue(nv) if nv.path == symbol::VALIDATOR => {
+                    let validator =
+                        parse_lit_into_type(symbol::VALIDATOR, parse_expr_as_lit(&nv.value)?)?;
                     params
                         .check_mode
                         .try_set_validator(Some(validator))
-                        .map_err(|s| syn::Error::new_spanned(arg, s))?;
+                        .map_err(|s| syn::Error::new_spanned(nv, s))?;
                 }
-                syn::NestedMeta::Meta(syn::Meta::NameValue(nv)) if nv.path == symbol::DEBUG => {
-                    params.impls.debug = parse_lit_into_string(symbol::DEBUG, &nv.lit)?
-                        .parse::<ImplOption>()
-                        .map_err(|e| syn::Error::new_spanned(&arg, e.to_owned()))
-                        .map(DelegatingImplOption::from)?
-                        .into();
+                syn::Meta::NameValue(nv) if nv.path == symbol::DEBUG => {
+                    params.impls.debug =
+                        parse_lit_into_string(symbol::DEBUG, parse_expr_as_lit(&nv.value)?)?
+                            .parse::<ImplOption>()
+                            .map_err(|e| syn::Error::new_spanned(nv, e.to_owned()))
+                            .map(DelegatingImplOption::from)?
+                            .into();
                 }
-                syn::NestedMeta::Meta(syn::Meta::NameValue(nv)) if nv.path == symbol::DISPLAY => {
-                    params.impls.display = parse_lit_into_string(symbol::DISPLAY, &nv.lit)?
-                        .parse::<ImplOption>()
-                        .map_err(|e| syn::Error::new_spanned(&arg, e.to_owned()))
-                        .map(DelegatingImplOption::from)?
-                        .into();
+                syn::Meta::NameValue(nv) if nv.path == symbol::DISPLAY => {
+                    params.impls.display =
+                        parse_lit_into_string(symbol::DISPLAY, parse_expr_as_lit(&nv.value)?)?
+                            .parse::<ImplOption>()
+                            .map_err(|e| syn::Error::new_spanned(nv, e.to_owned()))
+                            .map(DelegatingImplOption::from)?
+                            .into();
                 }
-                syn::NestedMeta::Meta(syn::Meta::NameValue(nv)) if nv.path == symbol::ORD => {
-                    params.impls.ord = parse_lit_into_string(symbol::ORD, &nv.lit)?
-                        .parse::<ImplOption>()
-                        .map_err(|e| syn::Error::new_spanned(&arg, e.to_owned()))
-                        .map(DelegatingImplOption::from)?
-                        .into();
+                syn::Meta::NameValue(nv) if nv.path == symbol::ORD => {
+                    params.impls.ord =
+                        parse_lit_into_string(symbol::ORD, parse_expr_as_lit(&nv.value)?)?
+                            .parse::<ImplOption>()
+                            .map_err(|e| syn::Error::new_spanned(nv, e.to_owned()))
+                            .map(DelegatingImplOption::from)?
+                            .into();
                 }
-                syn::NestedMeta::Meta(syn::Meta::NameValue(nv)) if nv.path == symbol::SERDE => {
-                    params.impls.serde = parse_lit_into_string(symbol::SERDE, &nv.lit)?
-                        .parse::<ImplOption>()
-                        .map_err(|e| syn::Error::new_spanned(&arg, e.to_owned()))?
-                        .into();
+                syn::Meta::NameValue(nv) if nv.path == symbol::SERDE => {
+                    params.impls.serde =
+                        parse_lit_into_string(symbol::SERDE, parse_expr_as_lit(&nv.value)?)?
+                            .parse::<ImplOption>()
+                            .map_err(|e| syn::Error::new_spanned(nv, e.to_owned()))?
+                            .into();
                 }
-                syn::NestedMeta::Meta(syn::Meta::Path(p)) if p == symbol::SERDE => {
+                syn::Meta::Path(p) if p == symbol::SERDE => {
                     params.impls.serde = ImplOption::Implement.into();
                 }
-                syn::NestedMeta::Meta(syn::Meta::Path(p)) if p == symbol::VALIDATOR => {
+                syn::Meta::Path(p) if p == symbol::VALIDATOR => {
                     params
                         .check_mode
                         .try_set_validator(None)
-                        .map_err(|s| syn::Error::new_spanned(arg, s))?;
+                        .map_err(|s| syn::Error::new_spanned(p, s))?;
                 }
-                syn::NestedMeta::Meta(syn::Meta::Path(p)) if p == symbol::NO_STD => {
+                syn::Meta::Path(p) if p == symbol::NO_STD => {
                     params.std_lib = StdLib::no_std(p.span());
                 }
-                syn::NestedMeta::Meta(
-                    syn::Meta::Path(ref path)
-                    | syn::Meta::NameValue(syn::MetaNameValue { ref path, .. }),
-                ) => {
+                syn::Meta::Path(ref path)
+                | syn::Meta::NameValue(syn::MetaNameValue { ref path, .. }) => {
                     return Err(syn::Error::new_spanned(
                         &arg,
                         format!("unsupported argument `{}`", path.to_token_stream()),
@@ -311,7 +328,9 @@ impl ParamsRef {
 
         Ok(params)
     }
+}
 
+impl ParamsRef {
     pub fn build(self, body: &mut syn::ItemStruct) -> Result<proc_macro2::TokenStream, syn::Error> {
         let ParamsRef {
             std_lib,
@@ -324,9 +343,11 @@ impl ParamsRef {
         let ref_ty = &body.ident;
         let check_mode = check_mode.infer_validator_if_missing(ref_ty);
         let field = Field {
-            attrs: field_attrs,
-            name: field_ident.map_or(FieldName::Unnamed, FieldName::Named),
-            ty: wrapped_type,
+            attrs: field_attrs.to_owned(),
+            name: field_ident
+                .cloned()
+                .map_or(FieldName::Unnamed, FieldName::Named),
+            ty: wrapped_type.to_owned(),
         };
 
         let code_gen = RefCodeGen {
@@ -348,15 +369,15 @@ impl ParamsRef {
     }
 }
 
-pub struct CodeGen<'a> {
+pub struct CodeGen {
     check_mode: CheckMode,
-    body: &'a syn::ItemStruct,
-    field: Field<'a>,
+    body: syn::ItemStruct,
+    field: Field,
 
-    owned_attrs: AttrList<'a>,
+    owned_attrs: AttrList,
 
-    ref_doc: Vec<Cow<'a, syn::Lit>>,
-    ref_attrs: AttrList<'a>,
+    ref_doc: Vec<syn::Lit>,
+    ref_attrs: AttrList,
     ref_ty: syn::Type,
 
     std_lib: StdLib,
@@ -364,7 +385,7 @@ pub struct CodeGen<'a> {
     impls: Impls,
 }
 
-impl<'a> CodeGen<'a> {
+impl CodeGen {
     pub fn generate(&self) -> proc_macro2::TokenStream {
         let owned = self.owned().tokens();
         let ref_ = self.borrowed().tokens();
@@ -379,8 +400,8 @@ impl<'a> CodeGen<'a> {
         OwnedCodeGen {
             common_attrs: &self.body.attrs,
             check_mode: &self.check_mode,
-            body: self.body,
-            field: self.field,
+            body: &self.body,
+            field: &self.field,
             attrs: &self.owned_attrs,
             ty: &self.body.ident,
             ref_ty: &self.ref_ty,
@@ -396,7 +417,7 @@ impl<'a> CodeGen<'a> {
             common_attrs: &self.body.attrs,
             check_mode: &self.check_mode,
             vis: &self.body.vis,
-            field: self.field,
+            field: self.field.clone(),
             attrs: &self.ref_attrs,
             ty: &self.ref_ty,
             ident: syn::Ident::new(
@@ -435,6 +456,7 @@ fn create_field_if_none(fields: &mut syn::Fields) {
             ty: syn::Type::Verbatim(
                 syn::Ident::new("String", proc_macro2::Span::call_site()).into_token_stream(),
             ),
+            mutability: syn::FieldMutability::None,
         };
 
         *fields = syn::Fields::Unnamed(syn::FieldsUnnamed {
@@ -454,6 +476,7 @@ fn create_ref_field_if_none(fields: &mut syn::Fields) {
             ty: syn::Type::Verbatim(
                 syn::Ident::new("str", proc_macro2::Span::call_site()).into_token_stream(),
             ),
+            mutability: syn::FieldMutability::None,
         };
 
         *fields = syn::Fields::Unnamed(syn::FieldsUnnamed {
@@ -471,7 +494,7 @@ fn get_field_info(
 
     if iter.next().is_some() {
         return Err(syn::Error::new_spanned(
-            &fields,
+            fields,
             "typed string can only have one field",
         ));
     }
@@ -479,34 +502,34 @@ fn get_field_info(
     Ok((&field.ty, field.ident.as_ref(), &field.attrs))
 }
 
-#[derive(Copy, Clone)]
-pub struct Field<'a> {
-    pub attrs: &'a [syn::Attribute],
-    pub name: FieldName<'a>,
-    pub ty: &'a syn::Type,
+#[derive(Clone)]
+pub struct Field {
+    pub attrs: Vec<syn::Attribute>,
+    pub name: FieldName,
+    pub ty: syn::Type,
 }
 
-impl<'a> Field<'a> {
-    fn self_constructor(self) -> SelfConstructorImpl<'a> {
+impl Field {
+    fn self_constructor(&self) -> SelfConstructorImpl {
         SelfConstructorImpl(self)
     }
 }
 
-#[derive(Copy, Clone)]
-pub enum FieldName<'a> {
-    Named(&'a syn::Ident),
+#[derive(Clone)]
+pub enum FieldName {
+    Named(syn::Ident),
     Unnamed,
 }
 
-impl<'a> FieldName<'a> {
-    fn constructor_delimiter(self) -> proc_macro2::Delimiter {
+impl FieldName {
+    fn constructor_delimiter(&self) -> proc_macro2::Delimiter {
         match self {
             FieldName::Named(_) => proc_macro2::Delimiter::Brace,
             FieldName::Unnamed => proc_macro2::Delimiter::Parenthesis,
         }
     }
 
-    fn input_name(self) -> proc_macro2::Ident {
+    fn input_name(&self) -> proc_macro2::Ident {
         match self {
             FieldName::Named(name) => name.clone(),
             FieldName::Unnamed => proc_macro2::Ident::new("raw", proc_macro2::Span::call_site()),
@@ -514,7 +537,7 @@ impl<'a> FieldName<'a> {
     }
 }
 
-impl<'a> ToTokens for FieldName<'a> {
+impl ToTokens for FieldName {
     fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
         match self {
             Self::Named(ident) => ident.to_tokens(tokens),
@@ -523,7 +546,7 @@ impl<'a> ToTokens for FieldName<'a> {
     }
 }
 
-struct SelfConstructorImpl<'a>(Field<'a>);
+struct SelfConstructorImpl<'a>(&'a Field);
 
 impl<'a> ToTokens for SelfConstructorImpl<'a> {
     fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {

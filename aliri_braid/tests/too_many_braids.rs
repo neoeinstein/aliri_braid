@@ -115,7 +115,7 @@ macro_rules! too_many_braids {
             #[braid(
                 serde,
                 normalizer = "super::LowerString",
-                ref = "LowerStr",
+                ref_name = "LowerStr",
                 ref_doc = "A borrowed reference to a non-empty, lowercase string"
             )]
             pub struct LowerString;

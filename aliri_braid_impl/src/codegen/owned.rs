@@ -4,10 +4,10 @@ use super::{impls::ToImpl, AttrList, CheckMode, Field, Impls, StdLib};
 
 pub struct OwnedCodeGen<'a> {
     pub common_attrs: &'a [syn::Attribute],
-    pub attrs: &'a AttrList<'a>,
+    pub attrs: &'a AttrList,
     pub body: &'a syn::ItemStruct,
     pub ty: &'a syn::Ident,
-    pub field: Field<'a>,
+    pub field: &'a Field,
     pub check_mode: &'a CheckMode,
     pub ref_ty: &'a syn::Type,
     pub std_lib: &'a StdLib,
@@ -31,7 +31,7 @@ impl<'a> OwnedCodeGen<'a> {
         let param = self.field.name.input_name();
         let create = self.field.self_constructor();
         let ref_ty = self.ref_ty;
-        let field_ty = self.field.ty;
+        let field_ty = &self.field.ty;
         let alloc = self.std_lib.alloc();
 
         let vis = self
@@ -77,7 +77,7 @@ impl<'a> OwnedCodeGen<'a> {
         let param = self.field.name.input_name();
         let create = self.field.self_constructor();
         let ref_ty = self.ref_ty;
-        let field_ty = self.field.ty;
+        let field_ty = &self.field.ty;
         let core = self.std_lib.core();
         let alloc = self.std_lib.alloc();
 
@@ -139,7 +139,7 @@ impl<'a> OwnedCodeGen<'a> {
         let param = self.field.name.input_name();
         let create = self.field.self_constructor();
         let ref_ty = self.ref_ty;
-        let field_ty = self.field.ty;
+        let field_ty = &self.field.ty;
         let core = self.std_lib.core();
 
         let vis = self
@@ -182,7 +182,7 @@ impl<'a> OwnedCodeGen<'a> {
         );
 
         let ref_type = self.ref_ty;
-        let field = self.field.name;
+        let field = &self.field.name;
         let alloc = self.std_lib.alloc();
         let box_pointer_reinterpret_safety_comment = {
             let doc = format!(
@@ -210,8 +210,8 @@ impl<'a> OwnedCodeGen<'a> {
     }
 
     fn make_take(&self) -> proc_macro2::TokenStream {
-        let field = self.field.name;
-        let field_ty = self.field.ty;
+        let field = &self.field.name;
+        let field_ty = &self.field.ty;
         let doc = format!(
             "Unwraps the underlying [`{}`] value",
             field_ty.to_token_stream()
@@ -248,7 +248,7 @@ impl<'a> OwnedCodeGen<'a> {
 
     fn common_conversion(&self) -> proc_macro2::TokenStream {
         let ty = self.ty;
-        let field_name = self.field.name;
+        let field_name = &self.field.name;
         let ref_ty = self.ref_ty;
         let core = self.std_lib.core();
         let alloc = self.std_lib.alloc();
@@ -335,7 +335,7 @@ impl<'a> OwnedCodeGen<'a> {
     fn infallible_conversion(&self) -> proc_macro2::TokenStream {
         let ty = self.ty;
         let ref_ty = self.ref_ty;
-        let field_name = self.field.name;
+        let field_name = &self.field.name;
         let core = self.std_lib.core();
         let alloc = self.std_lib.alloc();
 
@@ -414,8 +414,8 @@ impl<'a> OwnedCodeGen<'a> {
     fn fallible_conversion(&self, validator: &syn::Type) -> proc_macro2::TokenStream {
         let ty = self.ty;
         let ref_ty = self.ref_ty;
-        let field_name = self.field.name;
-        let field_ty = self.field.ty;
+        let field_name = &self.field.name;
+        let field_ty = &self.field.ty;
         let validator = crate::as_validator(validator);
         let core = self.std_lib.core();
         let alloc = self.std_lib.alloc();
@@ -482,8 +482,8 @@ impl<'a> OwnedCodeGen<'a> {
     fn normalized_conversion(&self, normalizer: &syn::Type) -> proc_macro2::TokenStream {
         let ty = self.ty;
         let ref_ty = self.ref_ty;
-        let field_name = self.field.name;
-        let field_ty = self.field.ty;
+        let field_name = &self.field.name;
+        let field_ty = &self.field.ty;
         let validator = crate::as_validator(normalizer);
         let core = self.std_lib.core();
         let alloc = self.std_lib.alloc();

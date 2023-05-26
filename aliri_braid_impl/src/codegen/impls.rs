@@ -157,7 +157,7 @@ impl ToImpl for ImplDisplay {
 
     fn to_borrowed_impl(&self, gen: &RefCodeGen) -> Option<proc_macro2::TokenStream> {
         let ty = &gen.ty;
-        let field_name = gen.field.name;
+        let field_name = &gen.field.name;
         let core = gen.std_lib.core();
         self.0.map_ref(|| {
             quote! {
@@ -208,7 +208,7 @@ impl ToImpl for ImplDebug {
 
     fn to_borrowed_impl(&self, gen: &RefCodeGen) -> Option<proc_macro2::TokenStream> {
         let ty = &gen.ty;
-        let field_name = gen.field.name;
+        let field_name = &gen.field.name;
         let core = gen.std_lib.core();
         self.0.map_ref(|| {
             quote! {
@@ -242,7 +242,7 @@ impl From<DelegatingImplOption> for ImplOrd {
 impl ToImpl for ImplOrd {
     fn to_owned_impl(&self, gen: &OwnedCodeGen) -> Option<proc_macro2::TokenStream> {
         let ty = &gen.ty;
-        let field_name = gen.field.name;
+        let field_name = &gen.field.name;
         let core = gen.std_lib.core();
         self.0.map_owned(|| quote! {
             #[automatically_derived]
@@ -289,7 +289,7 @@ impl ToImpl for ImplSerde {
             let handle_failure = gen.check_mode.serde_err_handler();
 
             let name = gen.ty;
-            let field_name = gen.field.name;
+            let field_name = &gen.field.name;
             let wrapped_type = &gen.field.ty;
 
             quote! {

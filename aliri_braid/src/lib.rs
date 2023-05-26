@@ -120,7 +120,7 @@
 //! ```
 //! # use aliri_braid::braid;
 //! #
-//! #[braid(ref = "TempDb")]
+//! #[braid(ref_name = "TempDb")]
 //! pub struct DatabaseNameBuf;
 //!
 //! let owned = DatabaseNameBuf::from_static("mongo");

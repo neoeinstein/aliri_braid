@@ -4,6 +4,12 @@ The format of this changelog is based on [Keep a Changelog](https://keepachangel
 
 ## [Unreleased]
 
+## [0.4.0] - 2023-05-26
+
+- BREAKING: Providing a custom override for the borrowed form name has changed from `ref` to
+  `ref_name`, as `syn` now requires that it be a valid path (and `ref` is a keyword)
+- Upgraded `syn` dependency to v2
+
 ## [0.3.1] - 2022-11-02
 
 ### Fixed

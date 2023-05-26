@@ -12,7 +12,7 @@ pub const DEBUG: Symbol = Symbol("debug");
 pub const DISPLAY: Symbol = Symbol("display");
 pub const ORD: Symbol = Symbol("ord");
 pub const SERDE: Symbol = Symbol("serde");
-pub const REF: Symbol = Symbol("ref");
+pub const REF: Symbol = Symbol("ref_name");
 pub const REF_DOC: Symbol = Symbol("ref_doc");
 pub const REF_ATTR: Symbol = Symbol("ref_attr");
 pub const OWNED_ATTR: Symbol = Symbol("owned_attr");
@@ -71,6 +71,17 @@ fn get_lit_str(attr_name: Symbol, lit: &syn::Lit) -> Result<&syn::LitStr, syn::E
 //         syn::Error::new_spanned(lit, format!("failed to parse path: {:?}", string.value()))
 //     })
 // }
+
+pub(super) fn parse_expr_as_lit(expr: &syn::Expr) -> Result<&syn::Lit, syn::Error> {
+    if let syn::Expr::Lit(l) = expr {
+        Ok(&l.lit)
+    } else {
+        Err(syn::Error::new_spanned(
+            expr,
+            "expected a literal in this position",
+        ))
+    }
+}
 
 pub(super) fn parse_lit_into_type(
     attr_name: Symbol,
