@@ -318,7 +318,7 @@ fn check_reference_size() {
 #[allow(clippy::forget_ref, clippy::transmute_ptr_to_ptr)]
 fn check_reference_size_ptr() {
     let s = "source";
-    let y: &Normalized = &*Normalized::from_str(s).unwrap();
+    let y: &Normalized = &Normalized::from_str(s).unwrap();
     assert_eq_size_ptr!(&s, &y);
 }
 
@@ -326,7 +326,7 @@ fn check_reference_size_ptr() {
 #[allow(clippy::forget_ref, clippy::transmute_ptr_to_ptr)]
 fn check_reference_size_ptr_normalized() {
     let s = "source five";
-    let y: &Normalized = &*Normalized::from_str(s).unwrap();
+    let y: &Normalized = &Normalized::from_str(s).unwrap();
     assert_eq_size_ptr!(&s, &y);
 }
 
@@ -334,7 +334,7 @@ fn check_reference_size_ptr_normalized() {
 #[allow(clippy::forget_ref, clippy::transmute_ptr_to_ptr)]
 fn check_reference_size_val() {
     let s = "source";
-    let y: &Normalized = &*Normalized::from_str(s).unwrap();
+    let y: &Normalized = &Normalized::from_str(s).unwrap();
     dbg!(std::mem::size_of_val(s));
     dbg!(std::mem::size_of_val(y));
     assert_eq_size_val!(s, y);
@@ -344,7 +344,7 @@ fn check_reference_size_val() {
 #[allow(clippy::forget_ref, clippy::transmute_ptr_to_ptr)]
 fn check_reference_size_val_normalized() {
     let s = "source five";
-    let y: &Normalized = &*Normalized::from_str(s).unwrap();
+    let y: &Normalized = &Normalized::from_str(s).unwrap();
     dbg!(std::mem::size_of_val(s));
     dbg!(std::mem::size_of_val(y));
     assert_eq_size_val!(s, y);

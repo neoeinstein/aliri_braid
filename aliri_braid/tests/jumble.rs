@@ -9,13 +9,13 @@ mod common;
 #[braid]
 pub struct Basic;
 
-#[braid(ref = "SomeRefName")]
+#[braid(ref_name = "SomeRefName")]
 pub struct CustomRefName;
 
 #[braid(validator = "ValidatedBuf")]
 pub struct ExternallyValidated;
 
-#[braid(ref = "SomeValidatedRefName", validator = "ValidatedBuf")]
+#[braid(ref_name = "SomeValidatedRefName", validator = "ValidatedBuf")]
 pub struct ValidatedWithCustomRefName;
 
 #[braid(serde)]

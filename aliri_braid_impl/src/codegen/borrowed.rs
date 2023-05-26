@@ -1,17 +1,15 @@
-use std::borrow::Cow;
-
 use quote::{quote, ToTokens, TokenStreamExt};
 
 use super::{impls::ToImpl, AttrList, CheckMode, Field, FieldName, Impls, StdLib};
 
 pub struct RefCodeGen<'a> {
-    pub doc: &'a [Cow<'a, syn::Lit>],
+    pub doc: &'a [syn::Lit],
     pub common_attrs: &'a [syn::Attribute],
-    pub attrs: &'a AttrList<'a>,
+    pub attrs: &'a AttrList,
     pub vis: &'a syn::Visibility,
     pub ty: &'a syn::Type,
     pub ident: syn::Ident,
-    pub field: Field<'a>,
+    pub field: Field,
     pub check_mode: &'a CheckMode,
     pub owned_ty: Option<&'a syn::Ident>,
     pub std_lib: &'a StdLib,
@@ -21,7 +19,7 @@ pub struct RefCodeGen<'a> {
 impl<'a> RefCodeGen<'a> {
     fn inherent(&self) -> proc_macro2::TokenStream {
         let ty = &self.ty;
-        let field_name = self.field.name;
+        let field_name = &self.field.name;
         let inherent = self.check_inherent();
 
         quote! {
@@ -361,7 +359,7 @@ impl<'a> RefCodeGen<'a> {
             let core = self.std_lib.core();
             let alloc = self.std_lib.alloc();
 
-            let create = match self.field.name {
+            let create = match &self.field.name {
                 FieldName::Unnamed => quote! { #owned_ty(self.0.into()) },
                 FieldName::Named(field_name) => {
                     quote! { #owned_ty { #field_name: self.#field_name.into() } }
@@ -416,7 +414,7 @@ impl<'a> RefCodeGen<'a> {
 
     fn conversion(&self) -> proc_macro2::TokenStream {
         let ty = &self.ty;
-        let field_name = self.field.name;
+        let field_name = &self.field.name;
         let core = self.std_lib.core();
         let alloc = self.std_lib.alloc();
         let pointer_reinterpret_safety_comment = self.pointer_reinterpret_safety_comment(false);
@@ -561,10 +559,10 @@ impl<'a> RefCodeGen<'a> {
         let ty = &self.ty;
         let field_attrs = {
             let mut attrs = proc_macro2::TokenStream::new();
-            attrs.append_all(self.field.attrs);
+            attrs.append_all(&self.field.attrs);
             attrs
         };
-        let body = match self.field.name {
+        let body = match &self.field.name {
             FieldName::Named(name) => quote! ( { #field_attrs #name: str } ),
             FieldName::Unnamed => quote! { ( #field_attrs str ); },
         };
@@ -589,7 +587,7 @@ impl<'a> RefCodeGen<'a> {
 }
 
 fn is_doc_attribute(attr: &syn::Attribute) -> bool {
-    if let Some(ident) = attr.path.get_ident() {
+    if let Some(ident) = attr.path().get_ident() {
         ident == "doc"
     } else {
         false
