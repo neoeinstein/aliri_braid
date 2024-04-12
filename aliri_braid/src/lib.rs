@@ -262,8 +262,8 @@
 //! you have a few options:
 //!
 //! 1. Pass the username around as a string, validate that it isn't `root` at known entry points.
-//! 2. Create a username type and allow creation from a raw string, then validate it
-//!    just after creation.
+//! 2. Create a username type and allow creation from a raw string, then validate it just after
+//!    creation.
 //! 3. Create a strong username type that requires the value to be validated prior to being
 //!    creatable.
 //!
