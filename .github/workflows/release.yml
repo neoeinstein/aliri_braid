@@ -13,7 +13,7 @@ jobs:
     name: Publish Release ${{ github.ref_name }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - name: Install Stable Rust Toolchain
         uses: dtolnay/rust-toolchain@stable
       - id: parse-tag
